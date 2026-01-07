@@ -6,6 +6,8 @@
 
 Write trading strategies in plain English. Let AI agents execute them 24/7.
 
+*Inspired by [ai16z](https://github.com/ai16z) — autonomous AI agents for prediction markets*
+
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Polymarket](https://img.shields.io/badge/Polymarket-Enabled-purple.svg)](https://polymarket.com)
