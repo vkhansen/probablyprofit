@@ -13,6 +13,10 @@ from pydantic import BaseModel
 
 from poly16z.api.client import PolymarketClient, Market, Position, Order
 from poly16z.risk.manager import RiskManager
+# Note: Type checking import to avoid circular dependency if needed, but BaseStrategy doesn't import BaseAgent
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from poly16z.agent.strategy import BaseStrategy
 
 
 class Observation(BaseModel):
@@ -92,6 +96,8 @@ class BaseAgent(ABC):
         risk_manager: RiskManager,
         name: str = "BaseAgent",
         loop_interval: int = 60,
+        strategy: Optional['BaseStrategy'] = None,
+        dry_run: bool = False,
     ):
         """
         Initialize base agent.
@@ -101,16 +107,21 @@ class BaseAgent(ABC):
             risk_manager: Risk management system
             name: Agent name
             loop_interval: Seconds between loop iterations
+            strategy: Optional strategy to filter markets
+            dry_run: If True, log decisions but don't place real trades
         """
         self.client = client
         self.risk_manager = risk_manager
         self.name = name
         self.loop_interval = loop_interval
+        self.strategy = strategy
+        self.dry_run = dry_run
 
         self.memory = AgentMemory()
         self.running = False
 
-        logger.info(f"Agent '{name}' initialized")
+        mode_str = " [DRY RUN MODE]" if dry_run else ""
+        logger.info(f"Agent '{name}' initialized{mode_str}")
 
     async def observe(self) -> Observation:
         """
@@ -123,6 +134,13 @@ class BaseAgent(ABC):
 
         # Fetch current data
         markets = await self.client.get_markets(active=True, limit=50)
+        
+        # Apply Strategy Filtering if present
+        if self.strategy:
+            original_count = len(markets)
+            markets = self.strategy.filter_markets(markets)
+            logger.debug(f"[{self.name}] Strategy '{self.strategy.name}' filtered markets: {original_count} -> {len(markets)}")
+
         positions = await self.client.get_positions()
         balance = await self.client.get_balance()
 
@@ -184,6 +202,11 @@ class BaseAgent(ABC):
                 logger.warning("Risk manager rejected buy decision")
                 return False
 
+            # Dry run check
+            if self.dry_run:
+                logger.info(f"[{self.name}] 🧪 DRY RUN: Would BUY {decision.size} of '{decision.outcome}' @ {decision.price:.2f} on {decision.market_id}")
+                return True
+
             # Place order
             order = await self.client.place_order(
                 market_id=decision.market_id,
@@ -205,6 +228,11 @@ class BaseAgent(ABC):
             if not decision.market_id or not decision.outcome:
                 logger.error("Sell decision missing market_id or outcome")
                 return False
+
+            # Dry run check
+            if self.dry_run:
+                logger.info(f"[{self.name}] 🧪 DRY RUN: Would SELL {decision.size} of '{decision.outcome}' @ {decision.price:.2f} on {decision.market_id}")
+                return True
 
             # Place sell order
             order = await self.client.place_order(

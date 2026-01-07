@@ -1,119 +1,199 @@
-# poly16z
+# 🤖 poly16z
 
-**poly16z** is the ultimate "hedge fund in a box" for Polymarket. It lets you write trading strategies in plain English and have AI agents (Claude, GPT-4, Gemini) execute them for you 24/7.
+<div align="center">
 
-## 🚀 The Noob's Guide to Setting Up
+**The "Hedge Fund in a Box" for Polymarket**
 
-Okay, so you want to trade on Polymarket with AI but don't know where to start? Follow these steps exactly.
+Write trading strategies in plain English. Let AI agents execute them 24/7.
 
-### Step 1: Get Your Money Ready
-1. **Create a Polymarket Account**: Go to [polymarket.com](https://polymarket.com) and sign up with email (easier) or a wallet (advanced).
-2. **Deposit USDC**: You need USDC (on Polygon network) to trade. You can buy it directly on Polymarket or send it from an exchange like Coinbase/Binance.
-3. **Get MATIC**: You need a tiny amount of MATIC (like $1 worth) to pay for transaction fees on Polygon.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Polymarket](https://img.shields.io/badge/Polymarket-Enabled-purple.svg)](https://polymarket.com)
 
-### Step 2: Get Your Keys (The Scary Part)
-> ⚠️ **WARNING**: Your Private Key gives FULL access to your money. NEVER share it. If you paste it in a Discord or send it to someone, consider your money gone.
+</div>
 
-1. **Export Private Key**:
-   - If you used Email Login: You need to reveal your wallet's private key. Go to your wallet settings on Polymarket (or the Magic wallet dashboard) and look for "Export Private Key".
-   - If you used MetaMask/etc: You can export it from the extension.
-2. **Get API Keys**:
-   - For OpenAI: Go to [platform.openai.com](https://platform.openai.com) -> API Keys.
-   - For Anthropic: Go to [console.anthropic.com](https://console.anthropic.com).
-   - For Gemini: Go to [aistudio.google.com](https://aistudio.google.com).
+---
 
-### Step 3: Install the Bot
-You need Python installed. If you don't have it, download it from [python.org](https://python.org).
+## ⚡ Quick Start (5 minutes)
 
-1. **Download this folder**:
-   ```bash
-   git clone https://github.com/your-repo/poly16z.git
-   cd poly16z
-   ```
-
-2. **Install the magic**:
-   ```bash
-   # This installs all the dependencies
-   pip install -e .
-   ```
-
-3. **Configure your secrets**:
-   Create a file named `.env` in this folder. Open it with standard text editor (Notepad, TextEdit) and paste this:
-
-   ```env
-   # Your Wallet (starts with 0x...)
-   PRIVATE_KEY=0x123456789abcdef...
-   
-   # AI Keys (fill the one you want to use)
-   ANTHROPIC_API_KEY=sk-ant-...
-   OPENAI_API_KEY=sk-...
-   GOOGLE_API_KEY=...
-   ```
-
-### Step 4: Run It!
-
-Create a file called `my_bot.py`:
-
-```python
-import asyncio
-import os
-from poly16z.api.client import PolymarketClient
-from poly16z.risk.manager import RiskManager
-from poly16z.agent.openai_agent import OpenAIAgent
-
-async def main():
-    # 1. Connect to Polymarket
-    # Note: For real trading, you need to generate specific API keys from your 
-    # private key. The client handles some of this, but check docs for details.
-    client = PolymarketClient(
-        key=os.getenv("POLYMARKET_KEY"),    # You might need to generate these
-        passphrase=os.getenv("POLYMARKET_PASS"), # using the get_api_key helper
-        secret=os.getenv("POLYMARKET_SECRET")
-    )
-    
-    # 2. Safety First
-    risk = RiskManager(initial_capital=500.0) # Start small!
-    
-    # 3. Create the Agent
-    agent = OpenAIAgent(
-        client=client,
-        risk_manager=risk,
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        strategy_prompt="Find markets about Tech Stocks. Buy Yes if recent news is positive."
-    )
-    
-    # 4. Launch
-    print("🚀 Blasting off...")
-    await agent.run()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-Run it:
 ```bash
-python my_bot.py
-```
+# 1. Clone the repo
+git clone https://github.com/randomness11/poly16z.git
+cd poly16z
 
-## Advanced Stuff
+# 2. Install dependencies
+pip install -e .
 
-### Agents
-We support:
-- `AnthropicAgent` (Claude) - Great for complex reasoning.
-- `OpenAIAgent` (GPT-4) - Reliable and fast.
-- `GeminiAgent` (Google) - Good value and huge context window.
+# 3. Run setup wizard (creates your .env file)
+python scripts/setup_wizard.py
 
-### Risk Management
-The bot has a built-in `RiskManager` that prevents you from blowing up your account. It checks:
-- Daily loss limits
-- Position size limits
-- Stop losses
+# 4. Write your strategy in strategy.txt
+echo "Buy YES on any market about AI if price is below 25 cents" > strategy.txt
 
-To change limits:
-```python
-risk = RiskManager()
-risk.limits.max_daily_loss = 50.0  # Only lose $50 max per day
+# 5. Test in dry-run mode (no real money)
+python main.py --strategy custom --dry-run
+
+# 6. Go live!
+python main.py --strategy custom
 ```
 
 ---
-*Disclaimer: This is not financial advice. Crypto trading is risky. You can lose everything. Don't trade money you can't afford to burn.*
+
+## 🎯 Features
+
+| Feature | Description |
+|---------|-------------|
+| 🧠 **Multiple AI Agents** | GPT-4, Claude, Gemini - pick your model |
+| 📝 **Plain English Strategies** | Write strategies in `strategy.txt`, not code |
+| 🔒 **Risk Management** | Built-in daily loss limits, position sizing |
+| 🧪 **Dry Run Mode** | Test without risking real money |
+| 🐳 **Docker Ready** | One-command deployment |
+| 📊 **Real-time Data** | Live prices & volume from Polymarket Gamma API |
+
+---
+
+## 📋 How It Works
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
+│  Your Strategy  │ ──▶ │   AI Agent   │ ──▶ │   Polymarket    │
+│  (strategy.txt) │     │ (GPT-4/etc)  │     │   (Real Trades) │
+└─────────────────┘     └──────────────┘     └─────────────────┘
+```
+
+1. **You write** a strategy in plain English
+2. **The AI analyzes** live Polymarket data
+3. **Trades execute** based on AI decisions
+
+---
+
+## 🛠️ CLI Commands
+
+### Run the Bot
+```bash
+# Custom strategy with GPT-4
+python main.py --strategy custom --agent openai
+
+# News trading for specific keywords
+python main.py --strategy news --keywords "Bitcoin,ETH" --agent openai
+
+# Use Gemini (cheaper, faster)
+python main.py --strategy custom --agent gemini
+```
+
+### Dry Run (Safe Testing)
+```bash
+python main.py --strategy custom --dry-run
+```
+Watch the bot analyze markets and log what it *would* trade — without spending money.
+
+### Interactive CLI
+```bash
+python scripts/cli.py get-markets --limit 10   # View active markets
+python scripts/cli.py check-balance            # Check your USDC
+python scripts/cli.py get-positions            # See open positions
+```
+
+---
+
+## 🧠 Writing Your Strategy
+
+Open `strategy.txt` and write instructions in plain English:
+
+```
+You are an aggressive trader looking for undervalued opportunities.
+
+Rules:
+1. Focus on markets with over $100k volume
+2. If YES price is below 15¢ and you believe it should win, BUY YES
+3. If YES price is above 85¢ and seems overpriced, BUY NO
+4. Bet $25 per trade
+5. Don't be afraid to take positions
+```
+
+Then run:
+```bash
+python main.py --strategy custom --dry-run
+```
+
+---
+
+## 🐳 Docker Deployment
+
+```bash
+docker compose up --build -d
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables (`.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `PRIVATE_KEY` | Your Polygon wallet private key |
+| `POLYMARKET_API_KEY` | Polymarket CLOB API key (auto-derived) |
+| `POLYMARKET_API_SECRET` | Polymarket CLOB API secret |
+| `POLYMARKET_API_PASSPHRASE` | Polymarket CLOB passphrase |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `GOOGLE_API_KEY` | Google Gemini API key |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
+| `INITIAL_CAPITAL` | Your starting capital (for risk calc) |
+
+Run `python scripts/setup_wizard.py` to generate this automatically.
+
+---
+
+## 🔒 Risk Management
+
+The built-in `RiskManager` protects you from blowing up:
+
+- **Max Daily Loss**: Stops trading if you hit your loss limit
+- **Position Sizing**: Limits max bet per trade
+- **Max Exposure**: Caps total capital at risk
+
+Configure in code:
+```python
+risk = RiskManager(initial_capital=1000)
+risk.limits.max_daily_loss = 50.0    # Stop at -$50
+risk.limits.max_position_size = 25.0  # Max $25 per bet
+```
+
+---
+
+## 📊 Supported Agents
+
+| Agent | Model | Best For |
+|-------|-------|----------|
+| OpenAI | `gpt-4o`, `o1-preview` | Complex reasoning |
+| Gemini | `gemini-1.5-pro` | Long context, cheaper |
+| Anthropic | `claude-3-opus` | Nuanced analysis |
+
+---
+
+## ⚠️ Requirements
+
+- **Python 3.10+** recommended (3.9 works but limited)
+- **USDC on Polygon** for trading
+- **MATIC** for gas (~$1 worth)
+
+---
+
+## 🚨 Disclaimer
+
+**This is not financial advice.** Prediction markets are risky. You can lose your entire investment. Only trade with money you can afford to lose.
+
+---
+
+## 📄 License
+
+MIT License - do whatever you want with it.
+
+---
+
+<div align="center">
+
+**Built for degens, by degens 🎲**
+
+</div>

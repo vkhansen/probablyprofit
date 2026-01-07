@@ -11,9 +11,33 @@ from decimal import Decimal
 
 import httpx
 from loguru import logger
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, OrderType
+import httpx
+from loguru import logger
 from pydantic import BaseModel
+
+try:
+    from py_clob_client.client import ClobClient
+    from py_clob_client.clob_types import OrderArgs, OrderType
+    params_avail = True
+except ImportError:
+    ClobClient = None
+    OrderArgs = None
+    OrderType = None
+    params_avail = False
+    logger.warning("py-clob-client not installed. Trading functionality will be limited.")
+
+from poly16z.api.exceptions import (
+    APIException,
+    NetworkException,
+    ValidationException,
+    OrderException,
+)
+from poly16z.utils.validators import (
+    validate_price,
+    validate_positive,
+    validate_non_negative,
+    validate_side,
+)
 
 
 class Market(BaseModel):
@@ -110,9 +134,15 @@ class PolymarketClient:
             self.client = None
             logger.warning("No API credentials provided - running in read-only mode")
 
-        # HTTP client for public endpoints
+        # HTTP client for CLOB endpoints (orders, prices)
         self.http_client = httpx.AsyncClient(
             base_url="https://clob.polymarket.com" if not testnet else "https://clob-test.polymarket.com",
+            timeout=30.0,
+        )
+        
+        # HTTP client for Gamma API (market metadata, volume, descriptions)
+        self.gamma_client = httpx.AsyncClient(
+            base_url="https://gamma-api.polymarket.com",
             timeout=30.0,
         )
 
@@ -127,7 +157,7 @@ class PolymarketClient:
         offset: int = 0,
     ) -> List[Market]:
         """
-        Fetch available markets.
+        Fetch available markets from Gamma API.
 
         Args:
             active: Only fetch active markets
@@ -138,35 +168,89 @@ class PolymarketClient:
             List of Market objects
         """
         try:
-            response = await self.http_client.get(
+            # Use Gamma API for market metadata (better data than CLOB /markets)
+            response = await self.gamma_client.get(
                 "/markets",
                 params={
-                    "active": active,
-                    "limit": limit,
+                    "closed": "false",  # ONLY open markets (most important filter)
+                    "limit": limit * 2,  # Fetch extra to filter out low-volume
                     "offset": offset,
                 }
             )
             response.raise_for_status()
             data = response.json()
 
+            # Gamma API returns a list directly
+            if not isinstance(data, list):
+                logger.warning(f"Expected list of markets, got {type(data)}")
+                return []
+
             markets = []
             for market_data in data:
-                market = Market(
-                    condition_id=market_data["condition_id"],
-                    question=market_data["question"],
-                    description=market_data.get("description"),
-                    end_date=datetime.fromisoformat(market_data["end_date"]),
-                    outcomes=market_data["outcomes"],
-                    outcome_prices=market_data.get("outcome_prices", [0.5] * len(market_data["outcomes"])),
-                    volume=float(market_data.get("volume", 0)),
-                    liquidity=float(market_data.get("liquidity", 0)),
-                    active=market_data.get("active", True),
-                    metadata=market_data,
-                )
-                markets.append(market)
-                self._market_cache[market.condition_id] = market
+                try:
+                    # STRICT FILTER: Skip closed markets
+                    if market_data.get("closed", False) == True:
+                        continue
+                    
+                    # STRICT FILTER: Must have real volume (> $100)
+                    volume = float(market_data.get("volumeNum", market_data.get("volume", 0)))
+                    if volume < 100:
+                        continue
+                    
+                    condition_id = market_data.get("conditionId", "")
+                    question = market_data.get("question", "Unknown")
+                    description = market_data.get("description")
+                    
+                    # Parse end date safely
+                    end_date_str = market_data.get("endDate", "")
+                    try:
+                        end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00")) if end_date_str else datetime.now()
+                    except ValueError:
+                        end_date = datetime.now()
+                    
+                    # Parse outcomes - Gamma returns JSON string like '["Yes", "No"]'
+                    outcomes_raw = market_data.get("outcomes", '["Yes", "No"]')
+                    if isinstance(outcomes_raw, str):
+                        import json
+                        outcomes = json.loads(outcomes_raw)
+                    else:
+                        outcomes = outcomes_raw
+                    
+                    # Parse outcome prices - Gamma returns JSON string like '["0.21", "0.79"]'
+                    prices_raw = market_data.get("outcomePrices", '[0.5, 0.5]')
+                    if isinstance(prices_raw, str):
+                        import json
+                        prices_parsed = json.loads(prices_raw)
+                        outcome_prices = [float(p) for p in prices_parsed]
+                    elif isinstance(prices_raw, list):
+                        outcome_prices = [float(p) for p in prices_raw]
+                    else:
+                        outcome_prices = [0.5] * len(outcomes)
+                    
+                    # Use volumeNum for numeric volume (Gamma provides this)
+                    volume = float(market_data.get("volumeNum", market_data.get("volume", 0)))
+                    liquidity = float(market_data.get("liquidityNum", market_data.get("liquidity", 0)))
+                    is_active = market_data.get("active", True) and not market_data.get("closed", False)
+                    
+                    market = Market(
+                        condition_id=condition_id,
+                        question=question,
+                        description=description,
+                        end_date=end_date,
+                        outcomes=outcomes,
+                        outcome_prices=outcome_prices,
+                        volume=volume,
+                        liquidity=liquidity,
+                        active=is_active,
+                        metadata=market_data,
+                    )
+                    markets.append(market)
+                    self._market_cache[market.condition_id] = market
+                except Exception as parse_error:
+                    logger.debug(f"Skipping market due to parse error: {parse_error}")
+                    continue
 
-            logger.info(f"Fetched {len(markets)} markets")
+            logger.info(f"Fetched {len(markets)} markets from Gamma API")
             return markets
 
         except Exception as e:
@@ -243,7 +327,7 @@ class PolymarketClient:
         order_type: str = "LIMIT",
     ) -> Optional[Order]:
         """
-        Place an order.
+        Place an order with validation.
 
         Args:
             market_id: Market condition ID
@@ -254,11 +338,29 @@ class PolymarketClient:
             order_type: Order type (LIMIT, MARKET, etc.)
 
         Returns:
-            Order object or None
+            Order object
+
+        Raises:
+            ValidationException: If input parameters are invalid
+            OrderException: If order placement fails
+            APIException: If API call fails
         """
         if not self.client:
-            logger.error("Cannot place order - no API credentials provided")
-            return None
+            raise OrderException("Cannot place order - no API credentials provided")
+
+        # Validate inputs
+        try:
+            validate_side(side)
+            validate_positive(size, "size")
+            validate_price(price, "price")
+        except ValidationException as e:
+            logger.error(f"Invalid order parameters: {e}")
+            raise
+
+        if not market_id:
+            raise ValidationException("market_id cannot be empty")
+        if not outcome:
+            raise ValidationException("outcome cannot be empty")
 
         try:
             logger.info(f"Placing {side} order: {size} shares @ ${price} on {outcome}")
@@ -272,10 +374,11 @@ class PolymarketClient:
             )
 
             resp = await self.client.create_order(order_args)
-            
+
+            if not resp:
+                raise OrderException("Empty response from order API")
+
             # Map response to Order object
-            # Note: This mapping is hypothetical based on typical CLOB responses
-            # Actual response structure depends on py_clob_client version
             order = Order(
                 order_id=resp.get("orderID"),
                 market_id=market_id,
@@ -290,9 +393,16 @@ class PolymarketClient:
             logger.info(f"Order placed successfully: {order.order_id}")
             return order
 
+        except ValidationException:
+            raise
+        except OrderException:
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"Network error placing order: {e}")
+            raise NetworkException(f"Network error: {e}")
         except Exception as e:
             logger.error(f"Error placing order: {e}")
-            return None
+            raise OrderException(f"Order placement failed: {e}")
 
     async def cancel_order(self, order_id: str) -> bool:
         """
@@ -328,21 +438,27 @@ class PolymarketClient:
             return []
 
         try:
-            # Fetch positions from CLOB client (requires getting all token balances)
-            # This is a simplified implementation assuming we can reconstruct positions
-            # In a real app, you might need to query the graph or specific balance endpoints
+            # Fetch simple position info (this might need adjustment based on exact API response)
+            # The CLOB client typically has a method to get trades or positions
+            # For now, we will try to use `get_trades` and aggregate, or see if we can get held positions
+            # NOTE: py_clob_client doesn't expose a simple "get all positions" easily in all versions.
+            # We will use a simplified assumption that the user might want specific market positions or
+            # we need to track them.
+            # However, simpler approach for a framework: return empty for now but log specific instructions
+            # or try to fetch from a known endpoint if available.
+
+            # Attempt to use undocumented or common endpoint structure if specific method unavailable
+            # or check generic "get_account_state" if available.
+            # For this iteration, we will implement a basic trade aggregation if possible,
+            # but since that's heavy, let's try to fetch balances of conditional tokens.
             
-            # Note: py_clob_client might not have a direct 'get_positions' akin to a CEX
-            # usually it involves checking token balances.
-            # For now, we'll implement a basic balance check if supported, or leave a more specific TODO
+            # Since fetching all token balances is complex without an indexer, 
+            # we will return an empty list with a TODO log, but properly structured.
+            # In a real "Hedge Fund in a Box", we probably need The Graph integration here.
             
-            # Using a hypothetical method for sake of completion as per plan
-            # In reality, we often need to fetch all token balances for the user address
-            
-            # Placeholder for actual implementation:
-            # balances = await self.client.get_balance_allowance(...)
-            
+            logger.warning("get_positions is not fully implemented without Graph integration.")
             return []
+
         except Exception as e:
             logger.error(f"Error fetching positions: {e}")
             return []
@@ -359,14 +475,18 @@ class PolymarketClient:
             return 0.0
 
         try:
-            # Fetch USDC balance
-            # This often requires checking the collateral token balance on-chain or via API
-            # For now, assuming client has a method or we use a fallback
+            # Use get_collateral_balance if available (standard in some versions)
+            # Otherwise fall back to updating via on-chain or erroring
+            if hasattr(self.client, "get_collateral_balance"):
+                balance = await self.client.get_collateral_balance()
+                return float(balance)
             
-            # resp = await self.client.get_collateral_balance()
-            # return float(resp)
+            # Fallback: Try to get it via direct request if method is missing
+            # The endpoint is typically /user/balance or similar, but auth is complex.
+            # Let's assume the method exists or return 0 with warning
+            logger.warning("get_collateral_balance method missing from client")
+            return 0.0
             
-            return 0.0 
         except Exception as e:
             logger.error(f"Error fetching balance: {e}")
             return 0.0
