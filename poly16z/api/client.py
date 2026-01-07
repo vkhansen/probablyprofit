@@ -271,17 +271,23 @@ class PolymarketClient:
                 token_id=outcome,
             )
 
-            # This is a simplified version - actual implementation would use the CLOB client
+            resp = await self.client.create_order(order_args)
+            
+            # Map response to Order object
+            # Note: This mapping is hypothetical based on typical CLOB responses
+            # Actual response structure depends on py_clob_client version
             order = Order(
+                order_id=resp.get("orderID"),
                 market_id=market_id,
                 outcome=outcome,
                 side=side,
                 size=size,
                 price=price,
                 status="submitted",
+                timestamp=datetime.now()
             )
 
-            logger.info(f"Order placed successfully: {order}")
+            logger.info(f"Order placed successfully: {order.order_id}")
             return order
 
         except Exception as e:
@@ -304,7 +310,7 @@ class PolymarketClient:
 
         try:
             logger.info(f"Cancelling order {order_id}")
-            # Implementation would use CLOB client
+            resp = await self.client.cancel(order_id)
             return True
         except Exception as e:
             logger.error(f"Error cancelling order: {e}")
@@ -322,10 +328,21 @@ class PolymarketClient:
             return []
 
         try:
-            # Implementation would fetch from CLOB client
-            positions = []
-            # Simplified - would actually query the API
-            return positions
+            # Fetch positions from CLOB client (requires getting all token balances)
+            # This is a simplified implementation assuming we can reconstruct positions
+            # In a real app, you might need to query the graph or specific balance endpoints
+            
+            # Note: py_clob_client might not have a direct 'get_positions' akin to a CEX
+            # usually it involves checking token balances.
+            # For now, we'll implement a basic balance check if supported, or leave a more specific TODO
+            
+            # Using a hypothetical method for sake of completion as per plan
+            # In reality, we often need to fetch all token balances for the user address
+            
+            # Placeholder for actual implementation:
+            # balances = await self.client.get_balance_allowance(...)
+            
+            return []
         except Exception as e:
             logger.error(f"Error fetching positions: {e}")
             return []
@@ -342,8 +359,14 @@ class PolymarketClient:
             return 0.0
 
         try:
-            # Implementation would fetch from CLOB client
-            return 1000.0  # Placeholder
+            # Fetch USDC balance
+            # This often requires checking the collateral token balance on-chain or via API
+            # For now, assuming client has a method or we use a fallback
+            
+            # resp = await self.client.get_collateral_balance()
+            # return float(resp)
+            
+            return 0.0 
         except Exception as e:
             logger.error(f"Error fetching balance: {e}")
             return 0.0

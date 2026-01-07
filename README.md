@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Build intelligent trading bots for Polymarket in minutes using natural language strategy prompts and Claude AI.
+Build intelligent trading bots for Polymarket in minutes using natural language strategy prompts and AI (Claude, Gemini, or GPT-4).
 
 [Quick Start](#-quick-start) • [Examples](#-example-strategies) • [Documentation](#-documentation) • [Create Your Own](#-create-your-own-bot-in-10-minutes)
 
@@ -18,11 +18,11 @@ Build intelligent trading bots for Polymarket in minutes using natural language 
 
 ---
 
-A powerful, modular Python framework for creating intelligent trading bots on Polymarket using Claude AI. Define your strategy in natural language, and let AI handle the decision-making.
+A powerful, modular Python framework for creating intelligent trading bots on Polymarket using AI. Define your strategy in natural language, and let Claude, Gemini, or GPT-4 handle the decision-making.
 
 ## ✨ Features
 
-- **🤖 AI-Powered Decision Making** - Uses Claude to analyze markets and make trading decisions based on natural language strategy prompts
+- **🤖 Multi-Provider AI** - Choose Claude, Gemini, or GPT-4 for decision-making based on natural language strategy prompts
 - **📊 Complete Polymarket Integration** - Full API wrapper for markets, orders, positions, and real-time data
 - **🛡️ Built-in Risk Management** - Position sizing, stop-loss, take-profit, and exposure limits
 - **📰 Multi-Source Data Ingestion** - News APIs, RSS feeds, Twitter, and market signals
@@ -30,6 +30,31 @@ A powerful, modular Python framework for creating intelligent trading bots on Po
 - **🔌 Modular Architecture** - Use components independently or build custom solutions
 - **⚡ Async by Default** - High-performance async/await for real-time trading
 - **📝 Type-Safe** - Fully typed with Pydantic models
+
+### 🤖 Supported AI Providers
+
+Choose your preferred AI model:
+
+| Provider | Agent Class | Model | Best For |
+|----------|------------|-------|----------|
+| **Anthropic** | `AnthropicAgent` | Claude Sonnet 4.5 | Advanced reasoning, long context |
+| **Google** | `GeminiAgent` | Gemini 2.0 Flash | Fast responses, cost-effective |
+| **OpenAI** | `OpenAIAgent` | GPT-4o | Well-rounded performance |
+
+All agents share the same interface - just swap the class!
+
+```python
+from poly16z import AnthropicAgent, GeminiAgent, OpenAIAgent
+
+# Use Claude
+agent = AnthropicAgent(client, risk_manager, anthropic_api_key, STRATEGY)
+
+# Or use Gemini
+agent = GeminiAgent(client, risk_manager, google_api_key, STRATEGY)
+
+# Or use GPT-4
+agent = OpenAIAgent(client, risk_manager, openai_api_key, STRATEGY)
+```
 
 ## 🚀 Quick Start
 
