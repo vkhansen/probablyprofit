@@ -8,6 +8,8 @@ Write trading strategies in plain English. Let AI agents execute them 24/7.
 
 *Inspired by [ai16z](https://github.com/ai16z) — autonomous AI agents for prediction markets*
 
+🌐 **Website:** [probablyprofit.github.io](https://randomness11.github.io/probablyprofit/)
+
 [![CI](https://github.com/randomness11/probablyprofit/actions/workflows/ci.yml/badge.svg)](https://github.com/randomness11/probablyprofit/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
