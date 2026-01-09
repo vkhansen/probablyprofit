@@ -71,7 +71,6 @@ nav {
 .brand {
     display: flex;
     align-items: center;
-    /* changed from baseline to center for icon alignment */
     gap: 0.75rem;
 }
 
@@ -80,7 +79,6 @@ nav {
     height: 24px;
     object-fit: contain;
     border-radius: 4px;
-    /* slight rounded corners for the icon */
 }
 
 .logo {
@@ -94,7 +92,6 @@ nav {
     font-size: 0.8em;
     color: var(--dim);
     margin-top: 2px;
-    /* slight alignment fix */
 }
 
 .by-line a {
@@ -135,22 +132,12 @@ h1 {
     font-size: 2.8rem;
     font-weight: 400;
     line-height: 1.25;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     color: var(--accent);
-    text-transform: uppercase;
-    /* Ensure caps match user flavor */
-    letter-spacing: -1px;
 }
 
 .highlight {
     color: var(--green);
-}
-
-.hero-sub {
-    font-size: 1.3rem;
-    color: var(--fg);
-    margin-bottom: 2rem;
-    font-weight: 500;
 }
 
 .desc {
@@ -298,10 +285,6 @@ h1 {
 @media (max-width: 768px) {
     h1 {
         font-size: 2rem;
-    }
-
-    .hero-sub {
-        font-size: 1.1rem;
     }
 
     .controls {
