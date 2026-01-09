@@ -5,6 +5,7 @@ Main FastAPI app for the probablyprofit dashboard.
 """
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from dataclasses import dataclass
@@ -60,9 +61,11 @@ def create_app() -> FastAPI:
     # WebSocket endpoint
     app.add_websocket_route("/ws", websocket_endpoint)
 
-    @app.get("/")
-    async def root():
-        return {"message": "probablyprofit Dashboard API", "version": "1.0.0"}
+    @app.get("/", response_class=HTMLResponse)
+    async def dashboard():
+        """Serve the dashboard UI."""
+        from probablyprofit.web.dashboard import DASHBOARD_HTML
+        return DASHBOARD_HTML
 
     @app.get("/health")
     async def health():
