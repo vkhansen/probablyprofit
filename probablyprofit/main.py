@@ -20,8 +20,12 @@ from probablyprofit.agent.strategy import MeanReversionStrategy, NewsTradingStra
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Poly16z: AI Trading Bot for Polymarket")
-    
+    parser = argparse.ArgumentParser(description="ProbablyProfit: AI Trading Bot for Polymarket & Kalshi")
+
+    # Platform selection
+    parser.add_argument("--platform", type=str, choices=["polymarket", "kalshi"], default="polymarket",
+                        help="Prediction market platform to use (default: polymarket)")
+
     parser.add_argument("--strategy", type=str, choices=["mean-reversion", "news", "custom"], default="mean-reversion",
                         help="Trading strategy to employ")
     parser.add_argument("--keywords", type=str, default="",
@@ -120,7 +124,7 @@ async def main():
     if args.agent == "ensemble":
         agent_label = f"ensemble ({args.voting} voting)"
 
-    logger.info(f"🚀 Starting Poly16z Bot [Strategy: {args.strategy}] [Agent: {agent_label}]")
+    logger.info(f"🚀 Starting ProbablyProfit Bot [Platform: {args.platform}] [Strategy: {args.strategy}] [Agent: {agent_label}]")
 
     # 0.5 Initialize Database (if persistence enabled)
     enable_persistence = os.getenv("ENABLE_PERSISTENCE", "true").lower() == "true"
@@ -133,12 +137,28 @@ async def main():
             logger.warning(f"⚠️  Database initialization failed: {e}")
             logger.warning("Continuing without persistence...")
 
-    # 1. Initialize Client
-    client = PolymarketClient(
-        api_key=os.getenv("POLYMARKET_API_KEY"),
-        secret=os.getenv("POLYMARKET_API_SECRET"),
-        passphrase=os.getenv("POLYMARKET_API_PASSPHRASE")
-    )
+    # 1. Initialize Platform Client
+    if args.platform == "polymarket":
+        from probablyprofit.api.client import PolymarketClient
+        client = PolymarketClient(
+            api_key=os.getenv("POLYMARKET_API_KEY"),
+            secret=os.getenv("POLYMARKET_API_SECRET"),
+            passphrase=os.getenv("POLYMARKET_API_PASSPHRASE")
+        )
+        logger.info("📊 Connected to Polymarket")
+
+    elif args.platform == "kalshi":
+        from probablyprofit.api.kalshi_client import KalshiClient
+        client = KalshiClient(
+            api_key_id=os.getenv("KALSHI_API_KEY_ID"),
+            private_key_path=os.getenv("KALSHI_PRIVATE_KEY_PATH"),
+            demo=os.getenv("KALSHI_DEMO", "false").lower() == "true"
+        )
+        logger.info("📊 Connected to Kalshi")
+
+    else:
+        logger.error(f"❌ Unknown platform: {args.platform}")
+        return
 
     # 2. Risk Manager
     risk = RiskManager(initial_capital=float(os.getenv("INITIAL_CAPITAL", 1000.0)))
