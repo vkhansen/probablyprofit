@@ -1,0 +1,312 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+
+:root {
+    /* "Chill" Palette - Gruvbox/Terminal inspired but clean */
+    --bg: #101010;
+    --surface: #1a1a1a;
+    --fg: #e0e0e0;
+    --dim: #666;
+    --border: #333;
+    --accent: #ebdbb2;
+    /* Warm white */
+    --green: #b8bb26;
+    /* Retro Green */
+    --orange: #fe8019;
+    /* Retro Orange */
+    --blue: #83a598;
+    /* Muted Blue */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'JetBrains Mono', 'Menlo', 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+    overflow-x: hidden;
+    font-size: 14px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--dim);
+}
+
+/* Layout - Single Column, Centered but Wide */
+main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+/* Navbar */
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 0;
+    margin-bottom: 5rem;
+    border-bottom: 1px dashed var(--border);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    /* changed from baseline to center for icon alignment */
+    gap: 0.75rem;
+}
+
+.brand-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    border-radius: 4px;
+    /* slight rounded corners for the icon */
+}
+
+.logo {
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.logo::before {
+    /* Removed custom prompt before text since we have an icon now */
+    content: '';
+}
+
+.by-line {
+    font-size: 0.8em;
+    color: var(--dim);
+    margin-top: 2px;
+    /* slight alignment fix */
+}
+
+.by-line a {
+    color: var(--dim);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.by-line a:hover {
+    color: var(--fg);
+    border-bottom-color: var(--fg);
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    color: var(--dim);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.nav-links a:hover {
+    color: var(--orange);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* Hero Section */
+.hero {
+    margin-bottom: 4rem;
+}
+
+h1 {
+    font-size: 2.8rem;
+    font-weight: 400;
+    line-height: 1.25;
+    margin-bottom: 2rem;
+    color: var(--accent);
+}
+
+.highlight {
+    color: var(--green);
+}
+
+.desc {
+    color: var(--dim);
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin-bottom: 2.5rem;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg);
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.btn:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+    transform: translateY(-2px);
+    box-shadow: 4px 4px 0 var(--border);
+}
+
+.cmd-box {
+    background: #000;
+    padding: 10px 15px;
+    border: 1px solid var(--border);
+    color: var(--green);
+    cursor: pointer;
+    transition: border-color 0.2s;
+    font-size: 0.95rem;
+}
+
+.cmd-box:hover {
+    border-color: var(--fg);
+}
+
+/* Platform Logos */
+.platform-row {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 4rem;
+    opacity: 0.7;
+    filter: grayscale(100%) contrast(80%);
+    transition: all 0.3s;
+}
+
+.platform-row:hover {
+    opacity: 1;
+    filter: grayscale(0%) contrast(100%);
+}
+
+.platform-row .label {
+    font-size: 0.75rem;
+    color: var(--dim);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.logos {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.partner-logo {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* Code Display */
+.code-display {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-top: 2rem;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.code-display::before {
+    content: 'strategy.py';
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: var(--bg);
+    padding: 0 10px;
+    color: var(--dim);
+    font-size: 0.8rem;
+}
+
+.line {
+    display: block;
+    min-height: 1.5em;
+}
+
+.ln {
+    display: inline-block;
+    width: 30px;
+    color: #333;
+    user-select: none;
+    text-align: right;
+    margin-right: 15px;
+}
+
+.k {
+    color: #fb4934;
+}
+
+.s {
+    color: #b8bb26;
+}
+
+.f {
+    color: #fabd2f;
+}
+
+.c {
+    color: #928374;
+    font-style: italic;
+}
+
+.n {
+    color: #83a598;
+}
+
+.v {
+    color: #d3869b;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    .controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .platform-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
