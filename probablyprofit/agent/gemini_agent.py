@@ -2,11 +2,11 @@
 Gemini Agent
 
 AI-powered trading agent using Google's Gemini models.
+Updated to use the new google-genai SDK.
 """
 
 import json
 from typing import Any, Optional
-import google.generativeai as genai
 from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Observation, Decision
@@ -15,6 +15,20 @@ from probablyprofit.api.client import PolymarketClient
 from probablyprofit.api.exceptions import AgentException, ValidationException
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.validators import validate_confidence
+
+# Try new SDK first, fall back to old
+try:
+    from google import genai
+    from google.genai import types
+    NEW_SDK = True
+except ImportError:
+    try:
+        import google.generativeai as genai
+        NEW_SDK = False
+        logger.warning("Using deprecated google.generativeai - consider upgrading to google-genai")
+    except ImportError:
+        genai = None
+        NEW_SDK = False
 
 
 class GeminiAgent(BaseAgent):
@@ -28,7 +42,7 @@ class GeminiAgent(BaseAgent):
         risk_manager: RiskManager,
         google_api_key: str,
         strategy_prompt: str,
-        model: str = "gemini-1.5-pro",
+        model: str = "gemini-2.0-flash",
         name: str = "GeminiAgent",
         loop_interval: int = 60,
         strategy: Optional[Any] = None,
@@ -36,41 +50,35 @@ class GeminiAgent(BaseAgent):
     ):
         super().__init__(client, risk_manager, name, loop_interval, strategy=strategy, dry_run=dry_run)
 
-        genai.configure(api_key=google_api_key)
+        if genai is None:
+            raise ImportError("Google Gemini SDK not installed. Run: pip install google-genai")
+
         self.model_name = model
-        self.model = genai.GenerativeModel(
-            model_name=model,
-            generation_config={"response_mime_type": "application/json"}
-        )
         self.strategy_prompt = strategy_prompt
-        
-        logger.info(f"GeminiAgent '{name}' initialized with model {model} (Long Context Ready)")
+        self.api_key = google_api_key
+
+        if NEW_SDK:
+            # New google-genai SDK
+            self.genai_client = genai.Client(api_key=google_api_key)
+        else:
+            # Old google-generativeai SDK
+            genai.configure(api_key=google_api_key)
+            self.model = genai.GenerativeModel(
+                model_name=model,
+                generation_config={"response_mime_type": "application/json"}
+            )
+
+        logger.info(f"GeminiAgent '{name}' initialized with model {model}")
 
     def _format_observation(self, observation: Observation) -> str:
         """
         Format observation using concise formatter for Gemini.
-
-        Args:
-            observation: Market observation
-
-        Returns:
-            Concise formatted prompt string
         """
-        # Use concise format for faster/cheaper Gemini model
         return ObservationFormatter.format_concise(observation, self.memory)
 
     async def decide(self, observation: Observation) -> Decision:
         """
         Use Gemini to make a trading decision with validation.
-
-        Args:
-            observation: Current market observation
-
-        Returns:
-            Decision based on AI analysis
-
-        Raises:
-            AgentException: If decision-making fails
         """
         logger.info(f"[{self.name}] Asking Gemini for decision...")
 
@@ -86,13 +94,23 @@ Respond with a JSON object with this schema:
 {get_decision_schema()}
 """
 
-            # Note: The generation_config in init enforces JSON mode
-            response = self.model.generate_content(prompt)
+            if NEW_SDK:
+                # New SDK API
+                response = self.genai_client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
+                )
+                content = response.text
+            else:
+                # Old SDK API
+                response = self.model.generate_content(prompt)
+                if not response or not response.text:
+                    raise AgentException("Empty response from Gemini")
+                content = response.text
 
-            if not response or not response.text:
-                raise AgentException("Empty response from Gemini")
-
-            content = response.text
             logger.debug(f"Gemini response: {content[:200]}...")
 
             data = json.loads(content)

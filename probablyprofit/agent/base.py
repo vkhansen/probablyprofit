@@ -214,6 +214,12 @@ class BaseAgent(ABC):
         self.memory = AgentMemory()
         self.running = False
 
+        # Track open positions to avoid duplicates
+        self._open_positions: set = set()  # Set of market_id:outcome
+
+        # Cache market names for better logging
+        self._market_names: dict = {}  # market_id -> question
+
         # Setup database persistence if enabled
         if enable_persistence:
             try:
@@ -228,6 +234,23 @@ class BaseAgent(ABC):
         mode_str = " [DRY RUN MODE]" if dry_run else ""
         logger.info(f"Agent '{name}' initialized{mode_str}")
 
+    def _get_market_name(self, market_id: str, max_len: int = 60) -> str:
+        """Get human-readable market name from ID."""
+        name = self._market_names.get(market_id, market_id[:20] + "...")
+        if len(name) > max_len:
+            name = name[:max_len-3] + "..."
+        return name
+
+    def _has_position(self, market_id: str, outcome: str) -> bool:
+        """Check if we already have a position in this market."""
+        key = f"{market_id}:{outcome}"
+        return key in self._open_positions
+
+    def _record_position(self, market_id: str, outcome: str) -> None:
+        """Record that we have a position in this market."""
+        key = f"{market_id}:{outcome}"
+        self._open_positions.add(key)
+
     async def observe(self) -> Observation:
         """
         Observe the current market state.
@@ -239,7 +262,11 @@ class BaseAgent(ABC):
 
         # Fetch current data
         markets = await self.client.get_markets(active=True, limit=50)
-        
+
+        # Cache market names for better logging
+        for market in markets:
+            self._market_names[market.condition_id] = market.question
+
         # Apply Strategy Filtering if present
         if self.strategy:
             original_count = len(markets)
@@ -247,6 +274,24 @@ class BaseAgent(ABC):
             logger.debug(f"[{self.name}] Strategy '{self.strategy.name}' filtered markets: {original_count} -> {len(markets)}")
 
         positions = await self.client.get_positions()
+
+        # Sync tracked positions with actual positions
+        # In dry run mode, keep our local tracking (API returns nothing)
+        # In live mode, sync with actual positions from API
+        if not self.dry_run or not self._open_positions:
+            # Only reset if we're live or have no local tracking
+            api_positions = set()
+            for pos in positions:
+                if pos.size > 0:
+                    key = f"{pos.market_id}:{pos.outcome}"
+                    api_positions.add(key)
+            # In live mode, use API positions; in dry run, merge with local
+            if not self.dry_run:
+                self._open_positions = api_positions
+            else:
+                # Dry run: add any API positions but keep our local ones too
+                self._open_positions.update(api_positions)
+
         balance = await self.client.get_balance()
 
         observation = Observation(
@@ -301,7 +346,15 @@ class BaseAgent(ABC):
             if not decision.market_id or not decision.outcome:
                 logger.error("Buy decision missing market_id or outcome")
                 return False
-                
+
+            # Get readable market name
+            market_name = self._get_market_name(decision.market_id)
+
+            # Check if we already have a position (avoid duplicate buys)
+            if self._has_position(decision.market_id, decision.outcome):
+                logger.info(f"[{self.name}] ⏭️ Already have position in '{market_name}' ({decision.outcome}) - skipping")
+                return True  # Not an error, just skip
+
             # Apply Auto-Sizing if enabled
             if self.sizing_method != "manual" and decision.price:
                 original_size = decision.size
@@ -324,7 +377,10 @@ class BaseAgent(ABC):
 
             # Dry run check
             if self.dry_run:
-                logger.info(f"[{self.name}] 🧪 DRY RUN: Would BUY {decision.size} of '{decision.outcome}' @ {decision.price:.2f} on {decision.market_id}")
+                logger.info(f"[{self.name}] 🧪 DRY RUN: Would BUY ${decision.size:.2f} of '{decision.outcome}' @ {decision.price:.2f}")
+                logger.info(f"[{self.name}] 📊 Market: {market_name}")
+                # Track position even in dry run
+                self._record_position(decision.market_id, decision.outcome)
                 return True
 
             # Place order
@@ -339,7 +395,8 @@ class BaseAgent(ABC):
             if order:
                 await self.memory.add_trade(order)
                 self.risk_manager.record_trade(order.size, order.price)
-                logger.info(f"[{self.name}] Buy order placed successfully")
+                self._record_position(decision.market_id, decision.outcome)
+                logger.info(f"[{self.name}] ✅ BUY order placed: ${decision.size:.2f} on '{market_name}'")
                 return True
 
             return False
@@ -349,9 +406,16 @@ class BaseAgent(ABC):
                 logger.error("Sell decision missing market_id or outcome")
                 return False
 
+            # Get readable market name
+            market_name = self._get_market_name(decision.market_id)
+
             # Dry run check
             if self.dry_run:
-                logger.info(f"[{self.name}] 🧪 DRY RUN: Would SELL {decision.size} of '{decision.outcome}' @ {decision.price:.2f} on {decision.market_id}")
+                logger.info(f"[{self.name}] 🧪 DRY RUN: Would SELL ${decision.size:.2f} of '{decision.outcome}' @ {decision.price:.2f}")
+                logger.info(f"[{self.name}] 📊 Market: {market_name}")
+                # Remove from tracked positions
+                key = f"{decision.market_id}:{decision.outcome}"
+                self._open_positions.discard(key)
                 return True
 
             # Place sell order
@@ -366,7 +430,10 @@ class BaseAgent(ABC):
             if order:
                 await self.memory.add_trade(order)
                 self.risk_manager.record_trade(-order.size, order.price)
-                logger.info(f"[{self.name}] Sell order placed successfully")
+                # Remove from tracked positions
+                key = f"{decision.market_id}:{decision.outcome}"
+                self._open_positions.discard(key)
+                logger.info(f"[{self.name}] ✅ SELL order placed: ${decision.size:.2f} on '{market_name}'")
                 return True
 
             return False

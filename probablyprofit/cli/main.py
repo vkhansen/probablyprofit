@@ -428,17 +428,26 @@ def run(
         # Create strategy
         strategy_obj = CustomStrategy(prompt_text=strategy_prompt)
 
-        # Create agent
-        agent_instance = AgentClass(
-            client=client,
-            risk_manager=risk,
-            api_key=api_key,
-            strategy_prompt=strategy_prompt,
-            model=model,
-            loop_interval=interval,
-            strategy=strategy_obj,
-            dry_run=is_dry_run or paper,
-        )
+        # Create agent with correct parameter name for each provider
+        agent_kwargs = {
+            "client": client,
+            "risk_manager": risk,
+            "strategy_prompt": strategy_prompt,
+            "model": model,
+            "loop_interval": interval,
+            "strategy": strategy_obj,
+            "dry_run": is_dry_run or paper,
+        }
+
+        # Each agent has a different parameter name for API key
+        if selected_agent == "openai":
+            agent_kwargs["openai_api_key"] = api_key
+        elif selected_agent == "anthropic":
+            agent_kwargs["anthropic_api_key"] = api_key
+        elif selected_agent == "google":
+            agent_kwargs["google_api_key"] = api_key
+
+        agent_instance = AgentClass(**agent_kwargs)
 
         # Setup paper trading if enabled
         if paper:
@@ -495,7 +504,13 @@ def run(
                 # Show decision summary
                 console.print(f"\n[bold]Decision:[/bold] {decision.action.upper()}")
                 if decision.market_id:
-                    console.print(f"  Market: {decision.market_id[:40]}...")
+                    # Look up market name
+                    market_name = decision.market_id[:40] + "..."
+                    for m in observation.markets:
+                        if m.condition_id == decision.market_id:
+                            market_name = m.question[:60] + ("..." if len(m.question) > 60 else "")
+                            break
+                    console.print(f"  Market: [cyan]{market_name}[/cyan]")
                     console.print(f"  Outcome: {decision.outcome}")
                     console.print(f"  Size: ${decision.size:.2f}")
                     console.print(f"  Confidence: {decision.confidence:.0%}")
@@ -504,11 +519,9 @@ def run(
 
                 # Execute the decision
                 if decision.action != "hold":
-                    if is_dry_run or paper:
-                        console.print(f"\n[yellow]DRY RUN - Would execute: {decision.action.upper()} {decision.outcome}[/yellow]")
-                    else:
-                        with console.status("[bold]Executing trade...[/bold]"):
-                            await agent_instance.act(decision)
+                    # Always call act() - it handles dry run internally and shows market names
+                    await agent_instance.act(decision)
+                    if not is_dry_run and not paper:
                         console.print("[green]Trade executed![/green]")
             else:
                 # Continuous loop

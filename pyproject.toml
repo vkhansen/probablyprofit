@@ -62,13 +62,13 @@ dependencies = [
 # AI Providers - install what you need
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.39.0"]
-google = ["google-generativeai>=0.3.0"]
+google = ["google-genai>=1.0.0"]
 
 # All AI providers
 ai = [
     "openai>=1.0.0",
     "anthropic>=0.39.0",
-    "google-generativeai>=0.3.0",
+    "google-genai>=1.0.0",
 ]
 
 # Polymarket trading
@@ -100,6 +100,7 @@ db = [
     "sqlmodel>=0.0.14",
     "alembic>=1.12.0",
     "aiosqlite>=0.19.0",
+    "greenlet>=3.0.0",  # Required for async SQLAlchemy
 ]
 
 # Web dashboard
