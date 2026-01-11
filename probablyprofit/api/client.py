@@ -519,18 +519,32 @@ class PolymarketClient:
             return []
 
         try:
+            import asyncio
+
             # Rate limit
             await _api_rate_limiter.acquire()
 
-            # Fetch positions using the REST API
+            # Fetch positions using the REST API with timeout
             # The CLOB API provides /positions endpoint for authenticated users
-            response = await self.http_client.get(
-                "/positions",
-                headers=self._get_auth_headers() if hasattr(self, '_get_auth_headers') else {}
-            )
+            try:
+                response = await asyncio.wait_for(
+                    self.http_client.get(
+                        "/positions",
+                        headers=self._get_auth_headers(),
+                        timeout=10.0
+                    ),
+                    timeout=15.0  # Overall timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Positions fetch timed out - using cached data")
+                return list(self._positions_cache.values())
 
             if response.status_code == 401:
                 logger.warning("Unauthorized to fetch positions - check API credentials")
+                return list(self._positions_cache.values())
+
+            if response.status_code == 404:
+                # No positions - return empty or cached
                 return list(self._positions_cache.values())
 
             response.raise_for_status()
@@ -588,45 +602,77 @@ class PolymarketClient:
             # Rate limit
             await _api_rate_limiter.acquire()
 
-            # Try py_clob_client method first (synchronous)
+            # Method 1: Try py_clob_client's get_balance (wrap in timeout)
             if hasattr(self.client, "get_balance"):
                 try:
-                    balance = self.client.get_balance()
+                    import asyncio
+                    # Run synchronous call with timeout
+                    loop = asyncio.get_event_loop()
+                    balance = await asyncio.wait_for(
+                        loop.run_in_executor(None, self.client.get_balance),
+                        timeout=5.0
+                    )
                     if balance is not None:
                         return float(balance)
+                except asyncio.TimeoutError:
+                    logger.debug("get_balance() timed out")
                 except Exception as e:
                     logger.debug(f"get_balance() failed: {e}")
 
-            # Try alternative method names
-            for method_name in ["get_collateral_balance", "get_usdc_balance", "balance"]:
-                if hasattr(self.client, method_name):
-                    try:
-                        method = getattr(self.client, method_name)
-                        result = method() if callable(method) else method
-                        if result is not None:
-                            return float(result)
-                    except Exception as e:
-                        logger.debug(f"{method_name}() failed: {e}")
-
-            # Fallback: Try REST API endpoint
+            # Method 2: Try CLOB API /balances endpoint
             try:
-                response = await self.http_client.get(
-                    "/balance",
-                    headers=self._get_auth_headers() if hasattr(self, '_get_auth_headers') else {}
+                import asyncio
+                response = await asyncio.wait_for(
+                    self.http_client.get(
+                        "/balances",
+                        headers=self._get_auth_headers(),
+                        timeout=5.0
+                    ),
+                    timeout=10.0
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    # Handle various response formats
-                    if isinstance(data, (int, float)):
-                        return float(data)
-                    elif isinstance(data, dict):
-                        for key in ["balance", "usdc_balance", "collateral", "available"]:
+                    # Parse balance from response
+                    if isinstance(data, dict):
+                        # Try common keys
+                        for key in ["balance", "usdc", "collateral", "available", "amount"]:
                             if key in data:
                                 return float(data[key])
+                        # Check for nested structure
+                        if "usdc" in data and isinstance(data["usdc"], dict):
+                            return float(data["usdc"].get("balance", 0))
+                    elif isinstance(data, list) and len(data) > 0:
+                        # Array of balances - find USDC
+                        for bal in data:
+                            if bal.get("asset") == "USDC" or bal.get("token") == "USDC":
+                                return float(bal.get("balance", bal.get("amount", 0)))
+                    elif isinstance(data, (int, float)):
+                        return float(data)
+            except asyncio.TimeoutError:
+                logger.debug("REST /balances timed out")
             except Exception as e:
-                logger.debug(f"REST balance fetch failed: {e}")
+                logger.debug(f"REST /balances failed: {e}")
 
-            # Last resort: use risk manager's tracked capital
+            # Method 3: Try data-api endpoint for balance
+            try:
+                import asyncio
+                # Polymarket data API endpoint
+                response = await asyncio.wait_for(
+                    self.gamma_client.get(
+                        f"/users/{self._api_creds.api_key if self._api_creds else 'unknown'}/balances"
+                    ),
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if isinstance(data, dict) and "balance" in data:
+                        return float(data["balance"])
+            except asyncio.TimeoutError:
+                logger.debug("Gamma /balances timed out")
+            except Exception as e:
+                logger.debug(f"Gamma /balances failed: {e}")
+
+            # Last resort: return 0 (tracked capital used by risk manager)
             logger.warning("Could not fetch balance from API, using tracked capital")
             return 0.0
 

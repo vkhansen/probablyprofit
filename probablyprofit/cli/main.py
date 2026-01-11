@@ -289,6 +289,9 @@ def setup(reconfigure: bool = False):
 @click.option("--once", is_flag=True, help="Run once and exit (don't loop)")
 @click.option("--stream", is_flag=True, default=True, help="Stream AI thinking in real-time")
 @click.option("--no-stream", is_flag=True, help="Disable streaming output")
+@click.option("--kelly", is_flag=True, help="Enable Kelly criterion position sizing")
+@click.option("--sizing", type=click.Choice(["manual", "kelly", "confidence", "dynamic"]),
+              default="manual", help="Position sizing method")
 def run(
     strategy: Optional[str],
     strategy_file: Optional[str],
@@ -302,6 +305,8 @@ def run(
     once: bool,
     stream: bool,
     no_stream: bool,
+    kelly: bool,
+    sizing: str,
 ):
     """
     Start the trading bot.
@@ -448,6 +453,18 @@ def run(
             agent_kwargs["google_api_key"] = api_key
 
         agent_instance = AgentClass(**agent_kwargs)
+
+        # Enable smart position sizing
+        if kelly or sizing == "kelly":
+            agent_instance.sizing_method = "kelly"
+            agent_instance.kelly_fraction = 0.25  # Quarter Kelly for safety
+            console.print("[cyan]📊 Kelly criterion sizing enabled (quarter Kelly)[/cyan]")
+        elif sizing == "confidence":
+            agent_instance.sizing_method = "confidence_based"
+            console.print("[cyan]📊 Confidence-based sizing enabled[/cyan]")
+        elif sizing == "dynamic":
+            agent_instance.sizing_method = "dynamic"
+            console.print("[cyan]📊 Dynamic sizing enabled[/cyan]")
 
         # Setup paper trading if enabled
         if paper:
