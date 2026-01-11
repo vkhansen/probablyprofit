@@ -634,7 +634,8 @@ class PositionManager:
 
         for pos in self.positions.values():
             pnl_str = f"${pos['unrealized_pnl']:+.2f}"
-            pnl_pct = pos['unrealized_pnl'] / (pos['size'] * pos['entry_price']) * 100
+            cost_basis = pos['size'] * pos['entry_price']
+            pnl_pct = (pos['unrealized_pnl'] / cost_basis * 100) if cost_basis > 0 else 0.0
 
             stop_info = ""
             if pos["market_id"] in self.trailing_stops:

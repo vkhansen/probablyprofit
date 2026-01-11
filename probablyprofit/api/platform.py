@@ -115,9 +115,7 @@ def create_platform_client(
     if platform.lower() == "polymarket":
         from probablyprofit.api.client import PolymarketClient
         return PolymarketClient(
-            api_key=kwargs.get("api_key"),
-            secret=kwargs.get("secret"),
-            passphrase=kwargs.get("passphrase"),
+            private_key=kwargs.get("private_key"),
             chain_id=kwargs.get("chain_id", 137),
             testnet=kwargs.get("testnet", False),
         )

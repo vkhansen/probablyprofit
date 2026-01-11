@@ -6,6 +6,7 @@ Includes retry logic and circuit breakers for resilience.
 """
 
 import asyncio
+import json
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -243,15 +244,13 @@ class PolymarketClient:
                     # Parse outcomes - Gamma returns JSON string like '["Yes", "No"]'
                     outcomes_raw = market_data.get("outcomes", '["Yes", "No"]')
                     if isinstance(outcomes_raw, str):
-                        import json
                         outcomes = json.loads(outcomes_raw)
                     else:
                         outcomes = outcomes_raw
-                    
+
                     # Parse outcome prices - Gamma returns JSON string like '["0.21", "0.79"]'
                     prices_raw = market_data.get("outcomePrices", '[0.5, 0.5]')
                     if isinstance(prices_raw, str):
-                        import json
                         prices_parsed = json.loads(prices_raw)
                         outcome_prices = [float(p) for p in prices_parsed]
                     elif isinstance(prices_raw, list):
@@ -421,8 +420,7 @@ class PolymarketClient:
                         clob_ids = market.metadata.get("clobTokenIds")
                         if clob_ids:
                             if isinstance(clob_ids, str):
-                                import json
-                                clob_ids = json.loads(clob_ids)
+                                                clob_ids = json.loads(clob_ids)
                             
                             if isinstance(clob_ids, list) and idx < len(clob_ids):
                                 token_id = clob_ids[idx]
@@ -494,7 +492,7 @@ class PolymarketClient:
 
     async def get_positions(self) -> List[Position]:
         """
-        Get current positions.
+        Get current positions from the CLOB API.
 
         Returns:
             List of Position objects
@@ -504,30 +502,59 @@ class PolymarketClient:
             return []
 
         try:
-            # Fetch simple position info (this might need adjustment based on exact API response)
-            # The CLOB client typically has a method to get trades or positions
-            # For now, we will try to use `get_trades` and aggregate, or see if we can get held positions
-            # NOTE: py_clob_client doesn't expose a simple "get all positions" easily in all versions.
-            # We will use a simplified assumption that the user might want specific market positions or
-            # we need to track them.
-            # However, simpler approach for a framework: return empty for now but log specific instructions
-            # or try to fetch from a known endpoint if available.
+            # Rate limit
+            await _api_rate_limiter.acquire()
 
-            # Attempt to use undocumented or common endpoint structure if specific method unavailable
-            # or check generic "get_account_state" if available.
-            # For this iteration, we will implement a basic trade aggregation if possible,
-            # but since that's heavy, let's try to fetch balances of conditional tokens.
-            
-            # Since fetching all token balances is complex without an indexer, 
-            # we will return an empty list with a TODO log, but properly structured.
-            # In a real "Hedge Fund in a Box", we probably need The Graph integration here.
-            
-            logger.warning("get_positions is not fully implemented without Graph integration.")
-            return []
+            # Fetch positions using the REST API
+            # The CLOB API provides /positions endpoint for authenticated users
+            response = await self.http_client.get(
+                "/positions",
+                headers=self._get_auth_headers() if hasattr(self, '_get_auth_headers') else {}
+            )
 
+            if response.status_code == 401:
+                logger.warning("Unauthorized to fetch positions - check API credentials")
+                return list(self._positions_cache.values())
+
+            response.raise_for_status()
+            positions_data = response.json()
+
+            positions = []
+            for pos_data in positions_data:
+                try:
+                    market_id = pos_data.get("asset_id", pos_data.get("market_id", ""))
+                    outcome = pos_data.get("outcome", "Yes")
+                    size = float(pos_data.get("size", pos_data.get("quantity", 0)))
+                    avg_price = float(pos_data.get("avg_price", pos_data.get("average_price", 0.5)))
+                    current_price = float(pos_data.get("current_price", pos_data.get("price", avg_price)))
+
+                    if size > 0:  # Only include non-zero positions
+                        position = Position(
+                            market_id=market_id,
+                            outcome=outcome,
+                            size=size,
+                            avg_price=avg_price,
+                            current_price=current_price,
+                            pnl=size * (current_price - avg_price)
+                        )
+                        positions.append(position)
+                        self._positions_cache[f"{market_id}_{outcome}"] = position
+                except Exception as parse_error:
+                    logger.debug(f"Skipping position due to parse error: {parse_error}")
+                    continue
+
+            logger.debug(f"Fetched {len(positions)} positions")
+            return positions
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                # No positions endpoint or no positions - return cached
+                return list(self._positions_cache.values())
+            logger.error(f"HTTP error fetching positions: {e}")
+            return list(self._positions_cache.values())
         except Exception as e:
             logger.error(f"Error fetching positions: {e}")
-            return []
+            return list(self._positions_cache.values())
 
     async def get_balance(self) -> float:
         """
@@ -541,25 +568,59 @@ class PolymarketClient:
             return 0.0
 
         try:
-            # Use get_collateral_balance if available (standard in some versions)
-            # Otherwise fall back to updating via on-chain or erroring
-            if hasattr(self.client, "get_collateral_balance"):
-                balance = await self.client.get_collateral_balance()
-                return float(balance)
-            
-            # Fallback: Try to get it via direct request if method is missing
-            # The endpoint is typically /user/balance or similar, but auth is complex.
-            # Let's assume the method exists or return 0 with warning
-            logger.warning("get_collateral_balance method missing from client")
+            # Rate limit
+            await _api_rate_limiter.acquire()
+
+            # Try py_clob_client method first (synchronous)
+            if hasattr(self.client, "get_balance"):
+                try:
+                    balance = self.client.get_balance()
+                    if balance is not None:
+                        return float(balance)
+                except Exception as e:
+                    logger.debug(f"get_balance() failed: {e}")
+
+            # Try alternative method names
+            for method_name in ["get_collateral_balance", "get_usdc_balance", "balance"]:
+                if hasattr(self.client, method_name):
+                    try:
+                        method = getattr(self.client, method_name)
+                        result = method() if callable(method) else method
+                        if result is not None:
+                            return float(result)
+                    except Exception as e:
+                        logger.debug(f"{method_name}() failed: {e}")
+
+            # Fallback: Try REST API endpoint
+            try:
+                response = await self.http_client.get(
+                    "/balance",
+                    headers=self._get_auth_headers() if hasattr(self, '_get_auth_headers') else {}
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    # Handle various response formats
+                    if isinstance(data, (int, float)):
+                        return float(data)
+                    elif isinstance(data, dict):
+                        for key in ["balance", "usdc_balance", "collateral", "available"]:
+                            if key in data:
+                                return float(data[key])
+            except Exception as e:
+                logger.debug(f"REST balance fetch failed: {e}")
+
+            # Last resort: use risk manager's tracked capital
+            logger.warning("Could not fetch balance from API, using tracked capital")
             return 0.0
-            
+
         except Exception as e:
             logger.error(f"Error fetching balance: {e}")
             return 0.0
 
     async def close(self) -> None:
-        """Close HTTP client."""
+        """Close HTTP clients."""
         await self.http_client.aclose()
+        await self.gamma_client.aclose()
 
     async def __aenter__(self) -> "PolymarketClient":
         """Async context manager entry."""

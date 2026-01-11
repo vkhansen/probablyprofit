@@ -238,10 +238,16 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
 
             return decision
 
-        except Exception as e:
-            logger.error(f"Error getting decision from Claude: {e}")
-            # Return safe default
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON from Claude: {e}")
+            # Safe default for parsing errors only
             return Decision(
                 action="hold",
-                reasoning=f"Error in decision-making: {e}",
+                reasoning=f"JSON parsing error, defaulting to hold: {e}",
+                confidence=0.0,
             )
+        except Exception as e:
+            logger.error(f"Error getting decision from Claude: {e}")
+            # Re-raise API errors so the agent loop can handle them properly
+            from probablyprofit.api.exceptions import AgentException
+            raise AgentException(f"Claude decision error: {e}")

@@ -410,10 +410,14 @@ class KalshiClient:
             return response.json()
 
         except Exception as e:
-            logger.error(f"Error fetching exchange status: {e}")
+            logger.warning(f"Could not fetch exchange status: {e}")
+            # Return unknown status rather than assuming inactive
+            # This prevents false negatives on temporary network issues
             return {
-                "exchange_active": False,
-                "trading_active": False,
+                "exchange_active": None,  # Unknown
+                "trading_active": None,   # Unknown
+                "status_unknown": True,
+                "error": str(e),
             }
 
     def _parse_market(self, data: Dict[str, Any]) -> KalshiMarket:

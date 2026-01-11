@@ -256,7 +256,7 @@ class BaseAgent(ABC):
             balance=balance,
         )
 
-        self.memory.add_observation(observation)
+        await self.memory.add_observation(observation)
         logger.debug(f"[{self.name}] Observed {len(markets)} markets, {len(positions)} positions")
 
         return observation
@@ -290,7 +290,7 @@ class BaseAgent(ABC):
         logger.info(f"[{self.name}] Acting on decision: {decision.action}")
 
         # Record decision
-        self.memory.add_decision(decision)
+        await self.memory.add_decision(decision)
 
         # Handle different actions
         if decision.action == "hold":
@@ -337,7 +337,7 @@ class BaseAgent(ABC):
             )
 
             if order:
-                self.memory.add_trade(order)
+                await self.memory.add_trade(order)
                 self.risk_manager.record_trade(order.size, order.price)
                 logger.info(f"[{self.name}] Buy order placed successfully")
                 return True
@@ -364,7 +364,7 @@ class BaseAgent(ABC):
             )
 
             if order:
-                self.memory.add_trade(order)
+                await self.memory.add_trade(order)
                 self.risk_manager.record_trade(-order.size, order.price)
                 logger.info(f"[{self.name}] Sell order placed successfully")
                 return True

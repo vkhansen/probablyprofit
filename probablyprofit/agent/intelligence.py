@@ -9,7 +9,7 @@ import os
 from typing import Any, List, Optional
 from loguru import logger
 
-from probablyprofit.agent.base import BaseAgent, Observation
+from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.api.client import PolymarketClient, Market
 from probablyprofit.risk.manager import RiskManager
 
@@ -205,9 +205,15 @@ class IntelligenceAgent(BaseAgent):
         
         return observation
     
-    async def decide(self, observation: Observation):
+    async def decide(self, observation: Observation) -> Decision:
         """
         Delegate decision to wrapped agent with enriched observation.
+
+        Args:
+            observation: Current market observation
+
+        Returns:
+            Decision from the wrapped agent
         """
         return await self.wrapped_agent.decide(observation)
 

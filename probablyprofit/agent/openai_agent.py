@@ -120,12 +120,18 @@ Output schema:
                 kwargs = {"temperature": self.temperature}
 
             # Call API
-            response = self.openai.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                response_format={"type": "json_object"},
+            # Note: o1/o3 reasoning models don't support response_format parameter
+            api_kwargs = {
+                "model": self.model,
+                "messages": messages,
                 **kwargs
-            )
+            }
+
+            # Only add response_format for non-reasoning models
+            if not is_reasoning_model:
+                api_kwargs["response_format"] = {"type": "json_object"}
+
+            response = self.openai.chat.completions.create(**api_kwargs)
 
             if not response.choices or len(response.choices) == 0:
                 raise AgentException("No response choices from OpenAI")
