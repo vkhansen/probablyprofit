@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProbablyProfit - Polymarket & Kalshi bots in plain English</title>
-    <meta name="description" content="Open-source framework for traders who have the strategy but don't want to debug API wrappers. Define your edge in a sentence; we handle the execution.">
-    <meta property="og:title" content="ProbablyProfit — Polymarket & Kalshi bots in plain English">
-    <meta property="og:description" content="A framework for traders who have the strategy but don't want to spend 6 hours debugging an API wrapper.">
+    <title>ProbablyProfit - AI-powered prediction market bots</title>
+    <meta name="description" content="Write your trading strategy in plain English. AI analyzes markets and executes trades. Works with Polymarket & Kalshi.">
+    <meta property="og:title" content="ProbablyProfit — AI prediction market bots in plain English">
+    <meta property="og:description" content="pip install, write strategy, profit. Open-source framework for AI-powered prediction market trading.">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="icon" type="image/png" href="assets/logo.png">
 </head>
@@ -37,7 +37,7 @@
             <div class="hero">
                 <div class="status-bar">
                     <span class="status-dot"></span>
-                    <span>v1.0 stable</span>
+                    <span>v0.1.0</span>
                     <span class="divider">/</span>
                     <span>open source</span>
                     <span class="divider">/</span>
@@ -45,12 +45,12 @@
                 </div>
 
                 <h1>
-                    <span class="line">Polymarket & Kalshi bots</span>
+                    <span class="line">AI prediction market bots</span>
                     <span class="line highlight">in plain English.</span>
                 </h1>
 
                 <p class="tagline">
-                    <strong>probablyprofit</strong> is a framework for traders who have the strategy but don't want to spend 6 hours debugging an API wrapper. Define your edge in a sentence; we handle the execution.
+                    <strong>probablyprofit</strong> turns your trading ideas into working bots. Write strategy in English, pick your AI (GPT-4, Claude, Gemini), and let it trade Polymarket & Kalshi for you.
                 </p>
 
                 <div class="actions">
@@ -77,41 +77,37 @@
                     <div class="window editor">
                         <div class="window-bar">
                             <div class="tab active">strategy.txt</div>
-                            <div class="tab">config.yml</div>
                         </div>
                         <div class="code-area">
                             <div class="line-numbers">
-                                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
+                                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
                             </div>
-                            <pre class="code"><span class="comment"># poll-driven election arb</span>
+                            <pre class="code"><span class="comment"># my_strategy.txt - just plain English!</span>
 
-<span class="keyword">use</span> polls <span class="keyword">from</span> <span class="string">"538"</span>, <span class="string">"rcp"</span>, <span class="string">"nyt"</span>
-<span class="keyword">use</span> sentiment <span class="keyword">from</span> <span class="string">"twitter"</span>, <span class="string">"polymarket"</span>
-<span class="keyword">use</span> odds <span class="keyword">from</span> <span class="string">"betfair"</span>
+You are a value investor for prediction markets.
 
-<span class="keyword">watch</span> <span class="string">"Trump Winner"</span>, <span class="string">"DeSantis Winner"</span>
-<span class="keyword">watch</span> <span class="string">"GOP Nominee"</span>, <span class="string">"Senate Control"</span>
+<span class="keyword">GOAL:</span> Find mispriced markets where the crowd
+is wrong, and profit from the correction.
 
-<span class="keyword">set</span> portfolio_max <span class="operator">=</span> <span class="number">$10k</span>
-<span class="keyword">set</span> conviction <span class="operator">=</span> avg(polls) <span class="operator">-</span> price
+<span class="keyword">RULES:</span>
+- BUY YES when market price is below your
+  estimated probability by 15%+
+- BUY NO when market price is above your
+  estimated probability by 15%+
+- Trade size: $5-20 per position
+- Maximum 5 open positions
 
-<span class="comment"># fade the public when data disagrees</span>
-<span class="keyword">when</span> conviction <span class="operator">&gt;</span> <span class="number">0.15</span> <span class="keyword">and</span> sentiment <span class="operator">&lt;</span> <span class="number">-0.2</span>
-  <span class="keyword">if</span> odds <span class="operator">&gt;</span> price <span class="operator">+</span> <span class="number">0.10</span>
-    <span class="function">buy</span> conviction <span class="operator">*</span> <span class="number">$1000</span> <span class="keyword">of</span> YES
-    <span class="function">hedge</span> <span class="keyword">with</span> <span class="string">"Senate Control"</span> <span class="keyword">at</span> <span class="number">20%</span>
-
-<span class="comment"># correlated momentum</span>
-<span class="keyword">when</span> <span class="string">"GOP Nominee"</span> moves <span class="number">5%</span> <span class="keyword">in</span> <span class="number">1h</span>
-  <span class="function">mirror</span> move <span class="keyword">on</span> <span class="string">"Trump Winner"</span>
-  <span class="function">notify</span> <span class="string">"correlation trigger"</span></pre>
+<span class="keyword">AVOID:</span>
+- Markets you don't understand
+- Prices between 40-60% (too uncertain)
+- Low volume markets (< $5,000)</pre>
                         </div>
                     </div>
 
                     <div class="connector">
                         <div class="connector-line"></div>
                         <div class="connector-dot"></div>
-                        <div class="connector-label">compiles to</div>
+                        <div class="connector-label">AI analyzes</div>
                     </div>
 
                     <div class="window terminal">
@@ -122,21 +118,59 @@
                             </div>
                         </div>
                         <div class="terminal-content">
-                            <div class="term-line"><span class="prompt">$</span> probablyprofit run --live</div>
+                            <div class="term-line"><span class="prompt">$</span> probablyprofit run -s strategy.txt --kelly</div>
                             <div class="term-line output"></div>
-                            <div class="term-line"><span class="success">●</span> feeds: 538, rcp, nyt, twitter, betfair</div>
-                            <div class="term-line"><span class="success">●</span> watching 4 markets</div>
+                            <div class="term-line"><span class="success">●</span> Agent: openai (gpt-4o)</div>
+                            <div class="term-line"><span class="success">●</span> Kelly criterion sizing enabled</div>
+                            <div class="term-line"><span class="success">●</span> Found 20 markets to analyze</div>
                             <div class="term-line output"></div>
-                            <div class="term-line dim">polling data: trump 47.2% avg</div>
-                            <div class="term-line dim">polymarket:   $0.41 | sentiment -0.31</div>
-                            <div class="term-line dim">betfair odds: $0.52</div>
+                            <div class="term-line dim">AI analyzing markets...</div>
                             <div class="term-line output"></div>
-                            <div class="term-line"><span class="info">→</span> conviction signal: +0.18</div>
-                            <div class="term-line"><span class="success">✓</span> <span class="highlight">bought $180 YES @ $0.41</span></div>
-                            <div class="term-line"><span class="success">✓</span> hedge: $36 on Senate Control</div>
+                            <div class="term-line"><span class="info">Decision:</span> BUY</div>
+                            <div class="term-line">  Market: <span class="highlight">Will 2025 be the hottest year?</span></div>
+                            <div class="term-line">  Outcome: Yes @ $0.003</div>
+                            <div class="term-line">  Size: $15.00 (Kelly sized)</div>
+                            <div class="term-line">  Confidence: 72%</div>
                             <div class="term-line output"></div>
-                            <div class="term-line dim">watching...<span class="cursor"></span></div>
+                            <div class="term-line"><span class="success">✓</span> Trade executed!</div>
+                            <div class="term-line dim">Watching for next opportunity...<span class="cursor"></span></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-section">
+                <h2>Built for serious traders</h2>
+                <div class="features-grid">
+                    <div class="feature">
+                        <div class="feature-icon">🤖</div>
+                        <h3>Multi-AI Support</h3>
+                        <p>GPT-4o, Claude, Gemini. Use one or let them vote together.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <h3>Kelly Sizing</h3>
+                        <p>Auto-size positions based on edge. Quarter Kelly for safety.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🛡️</div>
+                        <h3>Risk Management</h3>
+                        <p>Position limits, daily loss limits, stop-losses built in.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📝</div>
+                        <h3>Plain English</h3>
+                        <p>No code required. Write strategy like you'd explain to a friend.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🧪</div>
+                        <h3>Paper Trading</h3>
+                        <p>Test strategies with virtual money before going live.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Fast & Reliable</h3>
+                        <p>Smart timeouts, retries, circuit breakers. Never hangs.</p>
                     </div>
                 </div>
             </div>

@@ -463,6 +463,63 @@ h1 .highlight {
     vertical-align: text-bottom;
 }
 
+/* Features Section */
+.features-section {
+    margin-top: 40px;
+    padding-top: 40px;
+    border-top: 1px dashed var(--border);
+}
+
+.features-section h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 32px;
+    letter-spacing: -0.02em;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.feature {
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+
+.feature-icon {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+}
+
+.feature h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.feature p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Footer */
 footer {
     padding: 24px 0;
