@@ -38,6 +38,70 @@ class WalletConfig:
 
 
 @dataclass
+class APIConfig:
+    """API and network configuration."""
+    # Timeouts (seconds)
+    http_timeout: float = 30.0
+    websocket_timeout: float = 60.0
+
+    # Rate limiting
+    polymarket_rate_limit_calls: int = 8
+    polymarket_rate_limit_period: float = 1.0
+
+    # Circuit breaker
+    circuit_breaker_threshold: int = 5
+    circuit_breaker_timeout: float = 60.0
+
+    # Retry logic
+    retry_max_attempts: int = 3
+    retry_base_delay: float = 2.0
+    retry_max_delay: float = 30.0
+
+    # Cache settings
+    market_cache_ttl: float = 60.0
+    market_cache_max_size: int = 1000
+    price_cache_ttl: float = 10.0
+    positions_cache_max_size: int = 200
+
+
+@dataclass
+class AgentConfig:
+    """Agent loop configuration."""
+    # Loop settings
+    default_loop_interval: int = 60
+    max_consecutive_errors: int = 10
+    base_backoff: float = 5.0
+    max_backoff: float = 300.0
+
+    # Memory limits
+    memory_max_observations: int = 100
+    memory_max_decisions: int = 100
+    memory_max_trades: int = 100
+
+    # Checkpointing
+    checkpoint_interval: int = 5  # loops
+    risk_save_interval: int = 10  # loops
+
+
+@dataclass
+class RiskConfig:
+    """Risk management configuration."""
+    # Position limits
+    max_position_pct: float = 0.10
+    max_single_trade: float = 50.0
+    max_daily_loss_pct: float = 0.20
+    max_total_exposure_pct: float = 0.50
+
+    # Sizing
+    kelly_fraction: float = 0.25
+    min_confidence_to_trade: float = 0.6
+
+    # Stop loss / Take profit
+    default_stop_loss_pct: float = 0.20
+    default_take_profit_pct: float = 0.50
+
+
+@dataclass
 class Config:
     """Main configuration object."""
     # AI Providers
@@ -68,6 +132,11 @@ class Config:
     # State
     is_configured: bool = False
     preferred_agent: str = "auto"  # auto, openai, anthropic, google
+
+    # Sub-configs (initialized with defaults)
+    api: APIConfig = field(default_factory=APIConfig)
+    agent: AgentConfig = field(default_factory=AgentConfig)
+    risk: RiskConfig = field(default_factory=RiskConfig)
 
     def get_available_agents(self) -> List[str]:
         """Get list of configured AI providers."""
@@ -133,6 +202,21 @@ class Config:
             "risk": {
                 "max_position_size": self.max_position_size,
                 "max_daily_loss": self.max_daily_loss,
+                "max_position_pct": self.risk.max_position_pct,
+                "max_daily_loss_pct": self.risk.max_daily_loss_pct,
+                "kelly_fraction": self.risk.kelly_fraction,
+            },
+            "api": {
+                "http_timeout": self.api.http_timeout,
+                "rate_limit_calls": self.api.polymarket_rate_limit_calls,
+                "rate_limit_period": self.api.polymarket_rate_limit_period,
+                "circuit_breaker_threshold": self.api.circuit_breaker_threshold,
+                "retry_max_attempts": self.api.retry_max_attempts,
+            },
+            "agent": {
+                "loop_interval": self.agent.default_loop_interval,
+                "max_consecutive_errors": self.agent.max_consecutive_errors,
+                "checkpoint_interval": self.agent.checkpoint_interval,
             },
         }
 
@@ -158,6 +242,24 @@ def ensure_config_dir() -> Path:
     """Ensure config directory exists."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     return CONFIG_DIR
+
+
+# Global config singleton
+_config: Optional[Config] = None
+
+
+def get_config() -> Config:
+    """Get the global config singleton, loading if necessary."""
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+def reset_config() -> None:
+    """Reset the global config singleton (useful for testing)."""
+    global _config
+    _config = None
 
 
 def load_config() -> Config:
@@ -192,10 +294,49 @@ def load_config() -> Config:
             config.dry_run = trading.get("dry_run", config.dry_run)
             config.interval = trading.get("interval", config.interval)
 
-            # Risk settings
+            # Risk settings (top-level)
             risk = data.get("risk", {})
             config.max_position_size = risk.get("max_position_size", config.max_position_size)
             config.max_daily_loss = risk.get("max_daily_loss", config.max_daily_loss)
+
+            # Risk sub-config
+            config.risk.max_position_pct = risk.get("max_position_pct", config.risk.max_position_pct)
+            config.risk.max_single_trade = risk.get("max_single_trade", config.risk.max_single_trade)
+            config.risk.max_daily_loss_pct = risk.get("max_daily_loss_pct", config.risk.max_daily_loss_pct)
+            config.risk.max_total_exposure_pct = risk.get("max_total_exposure_pct", config.risk.max_total_exposure_pct)
+            config.risk.kelly_fraction = risk.get("kelly_fraction", config.risk.kelly_fraction)
+            config.risk.min_confidence_to_trade = risk.get("min_confidence_to_trade", config.risk.min_confidence_to_trade)
+            config.risk.default_stop_loss_pct = risk.get("default_stop_loss_pct", config.risk.default_stop_loss_pct)
+            config.risk.default_take_profit_pct = risk.get("default_take_profit_pct", config.risk.default_take_profit_pct)
+
+            # API settings
+            api = data.get("api", {})
+            config.api.http_timeout = api.get("http_timeout", config.api.http_timeout)
+            config.api.websocket_timeout = api.get("websocket_timeout", config.api.websocket_timeout)
+            config.api.polymarket_rate_limit_calls = api.get("rate_limit_calls", config.api.polymarket_rate_limit_calls)
+            config.api.polymarket_rate_limit_period = api.get("rate_limit_period", config.api.polymarket_rate_limit_period)
+            config.api.circuit_breaker_threshold = api.get("circuit_breaker_threshold", config.api.circuit_breaker_threshold)
+            config.api.circuit_breaker_timeout = api.get("circuit_breaker_timeout", config.api.circuit_breaker_timeout)
+            config.api.retry_max_attempts = api.get("retry_max_attempts", config.api.retry_max_attempts)
+            config.api.retry_base_delay = api.get("retry_base_delay", config.api.retry_base_delay)
+            config.api.retry_max_delay = api.get("retry_max_delay", config.api.retry_max_delay)
+            config.api.market_cache_ttl = api.get("market_cache_ttl", config.api.market_cache_ttl)
+            config.api.market_cache_max_size = api.get("market_cache_max_size", config.api.market_cache_max_size)
+            config.api.price_cache_ttl = api.get("price_cache_ttl", config.api.price_cache_ttl)
+            config.api.positions_cache_max_size = api.get("positions_cache_max_size", config.api.positions_cache_max_size)
+
+            # Agent settings
+            agent = data.get("agent", {})
+            config.agent.default_loop_interval = agent.get("loop_interval", config.agent.default_loop_interval)
+            config.agent.max_consecutive_errors = agent.get("max_consecutive_errors", config.agent.max_consecutive_errors)
+            config.agent.base_backoff = agent.get("base_backoff", config.agent.base_backoff)
+            config.agent.max_backoff = agent.get("max_backoff", config.agent.max_backoff)
+            config.agent.memory_max_observations = agent.get("memory_max_observations", config.agent.memory_max_observations)
+            config.agent.memory_max_decisions = agent.get("memory_max_decisions", config.agent.memory_max_decisions)
+            config.agent.memory_max_trades = agent.get("memory_max_trades", config.agent.memory_max_trades)
+            config.agent.checkpoint_interval = agent.get("checkpoint_interval", config.agent.checkpoint_interval)
+            config.agent.risk_save_interval = agent.get("risk_save_interval", config.agent.risk_save_interval)
+
         except Exception:
             pass
 

@@ -6,13 +6,16 @@ from typing import Optional
 from probablyprofit.api.exceptions import ValidationException
 
 
-def validate_price(price: float, field_name: str = "price") -> None:
+def validate_price(price: float, field_name: str = "price") -> float:
     """
     Validate price is between 0 and 1.
 
     Args:
         price: Price to validate
         field_name: Name of field for error message
+
+    Returns:
+        The validated price
 
     Raises:
         ValidationException: If price is invalid
@@ -23,14 +26,19 @@ def validate_price(price: float, field_name: str = "price") -> None:
     if price < 0 or price > 1:
         raise ValidationException(f"{field_name} must be between 0 and 1, got {price}")
 
+    return float(price)
 
-def validate_positive(value: float, field_name: str = "value") -> None:
+
+def validate_positive(value: float, field_name: str = "value") -> float:
     """
     Validate value is positive.
 
     Args:
         value: Value to validate
         field_name: Name of field for error message
+
+    Returns:
+        The validated value
 
     Raises:
         ValidationException: If value is invalid
@@ -41,14 +49,19 @@ def validate_positive(value: float, field_name: str = "value") -> None:
     if value <= 0:
         raise ValidationException(f"{field_name} must be positive, got {value}")
 
+    return float(value)
 
-def validate_non_negative(value: float, field_name: str = "value") -> None:
+
+def validate_non_negative(value: float, field_name: str = "value") -> float:
     """
     Validate value is non-negative.
 
     Args:
         value: Value to validate
         field_name: Name of field for error message
+
+    Returns:
+        The validated value
 
     Raises:
         ValidationException: If value is invalid
@@ -59,26 +72,34 @@ def validate_non_negative(value: float, field_name: str = "value") -> None:
     if value < 0:
         raise ValidationException(f"{field_name} must be non-negative, got {value}")
 
+    return float(value)
 
-def validate_confidence(confidence: float) -> None:
+
+def validate_confidence(confidence: float) -> float:
     """
     Validate confidence is between 0 and 1.
 
     Args:
         confidence: Confidence value to validate
 
+    Returns:
+        The validated confidence
+
     Raises:
         ValidationException: If confidence is invalid
     """
-    validate_price(confidence, "confidence")
+    return validate_price(confidence, "confidence")
 
 
-def validate_side(side: str) -> None:
+def validate_side(side: str) -> str:
     """
     Validate order side.
 
     Args:
         side: Order side (BUY or SELL)
+
+    Returns:
+        The validated side
 
     Raises:
         ValidationException: If side is invalid
@@ -86,13 +107,18 @@ def validate_side(side: str) -> None:
     if side not in ("BUY", "SELL"):
         raise ValidationException(f"side must be 'BUY' or 'SELL', got '{side}'")
 
+    return side
 
-def validate_private_key(key: str) -> None:
+
+def validate_private_key(key: str) -> str:
     """
     Validate Ethereum private key format.
 
     Args:
         key: Private key to validate
+
+    Returns:
+        The validated private key
 
     Raises:
         ValidationException: If key is invalid
@@ -113,13 +139,18 @@ def validate_private_key(key: str) -> None:
     except ValueError:
         raise ValidationException("Private key must be valid hexadecimal")
 
+    return key
 
-def validate_address(address: str) -> None:
+
+def validate_address(address: str) -> str:
     """
     Validate Ethereum address format.
 
     Args:
         address: Ethereum address to validate
+
+    Returns:
+        The validated address
 
     Raises:
         ValidationException: If address is invalid
@@ -137,3 +168,5 @@ def validate_address(address: str) -> None:
         int(address[2:], 16)
     except ValueError:
         raise ValidationException("Address must be valid hexadecimal")
+
+    return address

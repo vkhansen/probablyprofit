@@ -5,16 +5,13 @@ import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from probablyprofit.api.client import PolymarketClient, Market, Order, Position
+from probablyprofit.api.exceptions import ValidationException
 
 
 @pytest.fixture
 def client():
-    """Create a mock client without real credentials."""
-    return PolymarketClient(
-        api_key="test_key",
-        secret="test_secret",
-        passphrase="test_passphrase"
-    )
+    """Create a mock client without real credentials (read-only mode)."""
+    return PolymarketClient()  # No private key = read-only mode
 
 
 class TestMarketDataclass:
@@ -57,23 +54,18 @@ class TestPositionDataclass:
             avg_price=0.5,
             current_price=0.7
         )
-        assert position.value == 70.0  # 100 * 0.7
-        assert position.unrealized_pnl == 20.0  # (0.7 - 0.5) * 100
+        assert position.value == pytest.approx(70.0)  # 100 * 0.7
+        assert position.unrealized_pnl == pytest.approx(20.0)  # (0.7 - 0.5) * 100
 
 
 class TestPolymarketClient:
     @pytest.mark.asyncio
     async def test_get_balance_returns_float(self, client):
-        """Test that get_balance returns a float."""
-        with patch.object(client, '_http', new_callable=AsyncMock) as mock_http:
-            mock_response = MagicMock()
-            mock_response.json.return_value = {"balance": "1000.50"}
-            mock_http.get.return_value = mock_response
-            
-            # Note: actual implementation may differ
-            # This tests the expected interface
-            balance = await client.get_balance()
-            assert isinstance(balance, float)
+        """Test that get_balance returns a float (0.0 in read-only mode)."""
+        # In read-only mode (no credentials), balance returns 0.0
+        balance = await client.get_balance()
+        assert isinstance(balance, float)
+        assert balance == 0.0  # No credentials = 0.0
 
     @pytest.mark.asyncio
     async def test_close_client(self, client):
@@ -85,21 +77,21 @@ class TestValidation:
     def test_price_validation(self):
         """Prices must be between 0 and 1."""
         from probablyprofit.utils.validators import validate_price
-        
+
         assert validate_price(0.5) == 0.5
-        
-        with pytest.raises(ValueError):
+
+        with pytest.raises(ValidationException):
             validate_price(1.5)
-        
-        with pytest.raises(ValueError):
+
+        with pytest.raises(ValidationException):
             validate_price(-0.1)
 
     def test_side_validation(self):
         """Side must be BUY or SELL."""
         from probablyprofit.utils.validators import validate_side
-        
+
         assert validate_side("BUY") == "BUY"
         assert validate_side("SELL") == "SELL"
-        
-        with pytest.raises(ValueError):
+
+        with pytest.raises(ValidationException):
             validate_side("HOLD")

@@ -11,9 +11,10 @@ from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Observation, Decision
 from probablyprofit.utils.ai_rate_limiter import AIRateLimiter, anthropic_rate_limited
+from probablyprofit.utils.resilience import retry
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException, ValidationException
+from probablyprofit.api.exceptions import AgentException, ValidationException, NetworkException
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.validators import validate_confidence
 
@@ -179,6 +180,63 @@ class AnthropicAgent(BaseAgent):
             logger.error(f"Unexpected error parsing decision: {e}")
             raise AgentException(f"Error parsing decision: {e}")
 
+    @retry(
+        max_attempts=3,
+        base_delay=2.0,
+        max_delay=30.0,
+        retryable_exceptions=(
+            ConnectionError,
+            TimeoutError,
+            NetworkException,
+        ),
+    )
+    async def _call_claude_api(self, messages: list) -> str:
+        """
+        Call Claude API with retry logic.
+
+        Args:
+            messages: Messages to send to Claude
+
+        Returns:
+            Response text from Claude
+
+        Raises:
+            NetworkException: On connection/timeout errors (will be retried)
+            AgentException: On non-retryable errors
+        """
+        try:
+            # Run synchronous API call in thread pool to avoid blocking
+            import asyncio
+
+            response = await asyncio.to_thread(
+                self.anthropic.messages.create,
+                model=self.model,
+                max_tokens=2048,
+                temperature=self.temperature,
+                messages=messages,
+            )
+
+            # Record successful request and token usage
+            self._rate_limiter.record_success()
+            if hasattr(response, 'usage') and response.usage:
+                self._rate_limiter.record_tokens(
+                    response.usage.input_tokens + response.usage.output_tokens
+                )
+
+            return response.content[0].text
+
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning(f"Claude API connection error (will retry): {e}")
+            raise NetworkException(f"Claude API connection error: {e}")
+        except Exception as e:
+            # Check if it's a retryable Anthropic error
+            error_str = str(e).lower()
+            if any(x in error_str for x in ['timeout', 'connection', 'rate limit', '529', '503']):
+                logger.warning(f"Claude API transient error (will retry): {e}")
+                raise NetworkException(f"Claude API transient error: {e}")
+            # Non-retryable error
+            raise AgentException(f"Claude API error: {e}")
+
     async def decide(self, observation: Observation) -> Decision:
         """
         Use Claude to make a trading decision.
@@ -222,24 +280,9 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
                 }
             ]
 
-            # Call Claude
-            response = self.anthropic.messages.create(
-                model=self.model,
-                max_tokens=2048,
-                temperature=self.temperature,
-                messages=messages,
-            )
-
-            # Extract response
-            response_text = response.content[0].text
+            # Call Claude with retry
+            response_text = await self._call_claude_api(messages)
             logger.debug(f"Claude response: {response_text[:200]}...")
-
-            # Record successful request and token usage
-            self._rate_limiter.record_success()
-            if hasattr(response, 'usage') and response.usage:
-                self._rate_limiter.record_tokens(
-                    response.usage.input_tokens + response.usage.output_tokens
-                )
 
             # Parse into decision
             decision = self._parse_decision(response_text, observation)
@@ -260,10 +303,11 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
                 reasoning=f"JSON parsing error, defaulting to hold: {e}",
                 confidence=0.0,
             )
+        except AgentException:
+            # Re-raise agent exceptions (already logged)
+            raise
         except Exception as e:
             logger.error(f"Error getting decision from Claude: {e}")
-            # Re-raise API errors so the agent loop can handle them properly
-            from probablyprofit.api.exceptions import AgentException
             raise AgentException(f"Claude decision error: {e}")
 
     def decide_streaming(

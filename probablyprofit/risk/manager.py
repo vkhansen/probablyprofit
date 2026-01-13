@@ -4,10 +4,14 @@ Risk Manager
 Provides risk management primitives for safe trading.
 """
 
+import asyncio
+import threading
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from loguru import logger
 from pydantic import BaseModel
+
+from probablyprofit.config import get_config
 
 
 class RiskLimits(BaseModel):
@@ -70,8 +74,18 @@ class RiskManager:
         self.current_exposure = 0.0
         self.open_positions: Dict[str, float] = {}
 
+        # Thread-safe locks for state modification
+        self._state_lock = threading.Lock()
+        self._async_lock: Optional[asyncio.Lock] = None
+
         logger.info(f"Risk manager initialized with ${initial_capital:,.2f} capital")
         logger.info(f"Limits: {self.limits}")
+
+    def _get_async_lock(self) -> asyncio.Lock:
+        """Get or create async lock (lazy init for event loop compatibility)."""
+        if self._async_lock is None:
+            self._async_lock = asyncio.Lock()
+        return self._async_lock
 
     def can_open_position(
         self,
@@ -326,7 +340,7 @@ class RiskManager:
         entry_price: float,
         current_price: float,
         size: float,
-        stop_loss_pct: float = 0.20,
+        stop_loss_pct: Optional[float] = None,
     ) -> bool:
         """
         Check if stop-loss should be triggered.
@@ -335,11 +349,14 @@ class RiskManager:
             entry_price: Entry price
             current_price: Current price
             size: Position size
-            stop_loss_pct: Stop-loss threshold (default 20%)
+            stop_loss_pct: Stop-loss threshold (default from config)
 
         Returns:
             True if stop-loss should trigger
         """
+        if stop_loss_pct is None:
+            stop_loss_pct = get_config().risk.default_stop_loss_pct
+
         pnl = size * (current_price - entry_price)
         loss_pct = abs(pnl) / (size * entry_price)
 
@@ -357,7 +374,7 @@ class RiskManager:
         entry_price: float,
         current_price: float,
         size: float,
-        take_profit_pct: float = 0.50,
+        take_profit_pct: Optional[float] = None,
     ) -> bool:
         """
         Check if take-profit should be triggered.
@@ -366,11 +383,14 @@ class RiskManager:
             entry_price: Entry price
             current_price: Current price
             size: Position size
-            take_profit_pct: Take-profit threshold (default 50%)
+            take_profit_pct: Take-profit threshold (default from config)
 
         Returns:
             True if take-profit should trigger
         """
+        if take_profit_pct is None:
+            take_profit_pct = get_config().risk.default_take_profit_pct
+
         pnl = size * (current_price - entry_price)
         profit_pct = pnl / (size * entry_price)
 
@@ -390,7 +410,7 @@ class RiskManager:
         pnl: float = 0.0,
     ) -> None:
         """
-        Record a trade.
+        Record a trade (thread-safe).
 
         Args:
             size: Trade size (positive for buy, negative for sell)
@@ -406,10 +426,11 @@ class RiskManager:
             pnl=pnl,
         )
 
-        self.trades.append(trade)
-        self.current_exposure += abs(size * price)
-        self.current_capital += pnl
-        self.daily_pnl += pnl
+        with self._state_lock:
+            self.trades.append(trade)
+            self.current_exposure += abs(size * price)
+            self.current_capital += pnl
+            self.daily_pnl += pnl
 
         logger.info(
             f"Trade recorded: {size:+.2f} shares @ ${price:.4f} "
@@ -422,44 +443,47 @@ class RiskManager:
         size: float,
     ) -> None:
         """
-        Update position tracking.
+        Update position tracking (thread-safe).
 
         Args:
             market_id: Market identifier
             size: Position size (0 to close)
         """
-        if size == 0:
-            if market_id in self.open_positions:
-                del self.open_positions[market_id]
-        else:
-            self.open_positions[market_id] = size
+        with self._state_lock:
+            if size == 0:
+                if market_id in self.open_positions:
+                    del self.open_positions[market_id]
+            else:
+                self.open_positions[market_id] = size
 
     def reset_daily_stats(self) -> None:
-        """Reset daily statistics."""
-        self.daily_pnl = 0.0
+        """Reset daily statistics (thread-safe)."""
+        with self._state_lock:
+            self.daily_pnl = 0.0
         logger.info("Daily statistics reset")
 
     def get_stats(self) -> Dict[str, float]:
         """
-        Get risk statistics.
+        Get risk statistics (thread-safe).
 
         Returns:
             Dictionary of risk metrics
         """
-        total_trades = len(self.trades)
-        winning_trades = sum(1 for t in self.trades if t.pnl > 0)
-        total_pnl = sum(t.pnl for t in self.trades)
+        with self._state_lock:
+            total_trades = len(self.trades)
+            winning_trades = sum(1 for t in self.trades if t.pnl > 0)
+            total_pnl = sum(t.pnl for t in self.trades)
 
-        return {
-            "current_capital": self.current_capital,
-            "total_pnl": total_pnl,
-            "daily_pnl": self.daily_pnl,
-            "current_exposure": self.current_exposure,
-            "open_positions": len(self.open_positions),
-            "total_trades": total_trades,
-            "win_rate": winning_trades / total_trades if total_trades > 0 else 0.0,
-            "return_pct": (self.current_capital - self.initial_capital) / self.initial_capital,
-        }
+            return {
+                "current_capital": self.current_capital,
+                "total_pnl": total_pnl,
+                "daily_pnl": self.daily_pnl,
+                "current_exposure": self.current_exposure,
+                "open_positions": len(self.open_positions),
+                "total_trades": total_trades,
+                "win_rate": winning_trades / total_trades if total_trades > 0 else 0.0,
+                "return_pct": (self.current_capital - self.initial_capital) / self.initial_capital,
+            }
 
     def __repr__(self) -> str:
         """String representation."""
@@ -471,3 +495,192 @@ class RiskManager:
             f"positions={stats['open_positions']}, "
             f"win_rate={stats['win_rate']:.1%})"
         )
+
+    # =========================================================================
+    # PERSISTENCE METHODS
+    # =========================================================================
+
+    async def save_state(self, agent_name: str = "unknown") -> bool:
+        """
+        Persist current risk state to database for crash recovery.
+
+        Args:
+            agent_name: Name of the agent for identification
+
+        Returns:
+            True if save succeeded
+        """
+        import json
+
+        try:
+            from probablyprofit.storage.database import get_db_manager
+            from probablyprofit.storage.models import RiskStateRecord
+            from sqlmodel import select
+
+            db = get_db_manager()
+
+            with self._state_lock:
+                # Serialize trades to JSON
+                trades_data = [
+                    {
+                        "size": t.size,
+                        "price": t.price,
+                        "timestamp": t.timestamp,
+                        "pnl": t.pnl,
+                    }
+                    for t in self.trades[-100:]  # Keep last 100 trades
+                ]
+
+                state_record = RiskStateRecord(
+                    initial_capital=self.initial_capital,
+                    current_capital=self.current_capital,
+                    current_exposure=self.current_exposure,
+                    daily_pnl=self.daily_pnl,
+                    open_positions_json=json.dumps(self.open_positions),
+                    trades_json=json.dumps(trades_data),
+                    agent_name=agent_name,
+                    is_latest=True,
+                )
+
+            async with db.get_session() as session:
+                # Mark all previous records as not latest
+                stmt = select(RiskStateRecord).where(
+                    RiskStateRecord.agent_name == agent_name,
+                    RiskStateRecord.is_latest == True
+                )
+                result = await session.execute(stmt)
+                old_records = result.scalars().all()
+                for record in old_records:
+                    record.is_latest = False
+
+                # Add new record
+                session.add(state_record)
+                await session.commit()
+
+            logger.debug(f"Risk state saved for agent '{agent_name}'")
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to save risk state: {e}")
+            return False
+
+    async def load_state(self, agent_name: str = "unknown") -> bool:
+        """
+        Load risk state from database (for crash recovery).
+
+        Args:
+            agent_name: Name of the agent to load state for
+
+        Returns:
+            True if state was loaded successfully
+        """
+        import json
+
+        try:
+            from probablyprofit.storage.database import get_db_manager
+            from probablyprofit.storage.models import RiskStateRecord
+            from sqlmodel import select
+
+            db = get_db_manager()
+
+            async with db.get_session() as session:
+                stmt = select(RiskStateRecord).where(
+                    RiskStateRecord.agent_name == agent_name,
+                    RiskStateRecord.is_latest == True
+                ).order_by(RiskStateRecord.timestamp.desc()).limit(1)
+
+                result = await session.execute(stmt)
+                record = result.scalar_one_or_none()
+
+                if not record:
+                    logger.info(f"No saved risk state found for agent '{agent_name}'")
+                    return False
+
+                with self._state_lock:
+                    self.initial_capital = record.initial_capital
+                    self.current_capital = record.current_capital
+                    self.current_exposure = record.current_exposure
+                    self.daily_pnl = record.daily_pnl
+                    self.open_positions = json.loads(record.open_positions_json)
+
+                    # Restore trades
+                    trades_data = json.loads(record.trades_json)
+                    self.trades = [
+                        Trade(
+                            size=t["size"],
+                            price=t["price"],
+                            timestamp=t["timestamp"],
+                            pnl=t["pnl"],
+                        )
+                        for t in trades_data
+                    ]
+
+                logger.info(
+                    f"Risk state restored for agent '{agent_name}': "
+                    f"capital=${self.current_capital:.2f}, "
+                    f"positions={len(self.open_positions)}"
+                )
+                return True
+
+        except Exception as e:
+            logger.warning(f"Failed to load risk state: {e}")
+            return False
+
+    def to_dict(self) -> Dict:
+        """
+        Export current state as dictionary (for JSON serialization).
+
+        Returns:
+            Dict with all risk state
+        """
+        with self._state_lock:
+            return {
+                "initial_capital": self.initial_capital,
+                "current_capital": self.current_capital,
+                "current_exposure": self.current_exposure,
+                "daily_pnl": self.daily_pnl,
+                "open_positions": dict(self.open_positions),
+                "trades": [
+                    {
+                        "size": t.size,
+                        "price": t.price,
+                        "timestamp": t.timestamp,
+                        "pnl": t.pnl,
+                    }
+                    for t in self.trades
+                ],
+                "limits": self.limits.model_dump(),
+            }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "RiskManager":
+        """
+        Create RiskManager from dictionary state.
+
+        Args:
+            data: Dict with risk state
+
+        Returns:
+            RiskManager instance
+        """
+        limits = RiskLimits(**data.get("limits", {}))
+        manager = cls(
+            limits=limits,
+            initial_capital=data.get("initial_capital", 1000.0),
+        )
+
+        manager.current_capital = data.get("current_capital", manager.initial_capital)
+        manager.current_exposure = data.get("current_exposure", 0.0)
+        manager.daily_pnl = data.get("daily_pnl", 0.0)
+        manager.open_positions = data.get("open_positions", {})
+        manager.trades = [
+            Trade(
+                size=t["size"],
+                price=t["price"],
+                timestamp=t["timestamp"],
+                pnl=t["pnl"],
+            )
+            for t in data.get("trades", [])
+        ]
+
+        return manager

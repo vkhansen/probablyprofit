@@ -10,6 +10,7 @@ from datetime import datetime
 from loguru import logger
 
 from probablyprofit.web.api.models import (
+    HealthResponse,
     StatusResponse,
     TradeResponse,
     PerformanceResponse,
@@ -26,6 +27,95 @@ from probablyprofit.web.api.models import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check():
+    """
+    Health check endpoint for monitoring systems.
+
+    Returns:
+        HealthResponse with overall status and component checks
+
+    Status values:
+        - healthy: All systems operational
+        - degraded: Some issues but core functionality works
+        - unhealthy: Critical systems failing
+    """
+    from probablyprofit.web.app import get_agent_state
+
+    checks = {}
+    overall_status = "healthy"
+
+    # Check 1: Agent status
+    state = get_agent_state()
+    if state:
+        agent_health = state.agent.get_health_status()
+        checks["agent"] = {
+            "status": "healthy" if agent_health["running"] else "stopped",
+            "name": agent_health["name"],
+            "loop_count": agent_health["loop_count"],
+            "error_count": agent_health["error_count"],
+            "consecutive_errors": agent_health["consecutive_errors"],
+        }
+        if agent_health["consecutive_errors"] > 3:
+            checks["agent"]["status"] = "degraded"
+            overall_status = "degraded"
+        if agent_health["consecutive_errors"] > 8:
+            checks["agent"]["status"] = "unhealthy"
+            overall_status = "unhealthy"
+    else:
+        checks["agent"] = {"status": "not_initialized"}
+        overall_status = "degraded"
+
+    # Check 2: Database connectivity
+    try:
+        from probablyprofit.storage.database import get_db_manager
+        db = get_db_manager()
+        checks["database"] = {"status": "healthy"}
+    except Exception as e:
+        checks["database"] = {"status": "unhealthy", "error": str(e)}
+        overall_status = "unhealthy"
+
+    # Check 3: Memory usage
+    try:
+        import psutil
+        memory = psutil.virtual_memory()
+        memory_pct = memory.percent
+        checks["memory"] = {
+            "status": "healthy" if memory_pct < 80 else ("degraded" if memory_pct < 95 else "unhealthy"),
+            "percent_used": memory_pct,
+        }
+        if memory_pct >= 95:
+            overall_status = "unhealthy"
+        elif memory_pct >= 80 and overall_status == "healthy":
+            overall_status = "degraded"
+    except ImportError:
+        checks["memory"] = {"status": "unknown", "error": "psutil not installed"}
+
+    # Check 4: Last activity (was there recent trading activity?)
+    if state and state.agent.memory.observations:
+        last_obs = state.agent.memory.observations[-1]
+        time_since_last = (datetime.now() - last_obs.timestamp).total_seconds()
+        expected_interval = state.agent.loop_interval * 3  # Allow 3x the interval
+        checks["activity"] = {
+            "status": "healthy" if time_since_last < expected_interval else "degraded",
+            "seconds_since_last_observation": time_since_last,
+        }
+        if time_since_last >= expected_interval and overall_status == "healthy":
+            overall_status = "degraded"
+    else:
+        checks["activity"] = {"status": "no_data"}
+
+    uptime = state.uptime_seconds if state else 0.0
+
+    return HealthResponse(
+        status=overall_status,
+        timestamp=datetime.now(),
+        version="0.1.0",
+        uptime_seconds=uptime,
+        checks=checks,
+    )
 
 
 @router.get("/status", response_model=StatusResponse)

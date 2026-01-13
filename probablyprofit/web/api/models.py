@@ -9,6 +9,16 @@ from typing import List, Optional
 from datetime import datetime
 
 
+class HealthResponse(BaseModel):
+    """Health check response for monitoring systems."""
+
+    status: str  # "healthy", "degraded", "unhealthy"
+    timestamp: datetime
+    version: str
+    uptime_seconds: float
+    checks: dict  # Individual component health checks
+
+
 class StatusResponse(BaseModel):
     """Agent status response."""
 

@@ -7,13 +7,14 @@ Includes retry logic and circuit breakers for resilience.
 
 import asyncio
 import json
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 from decimal import Decimal
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 try:
     from py_clob_client.client import ClobClient
@@ -46,13 +47,87 @@ from probablyprofit.utils.resilience import (
 )
 from probablyprofit.utils.cache import AsyncTTLCache, market_cache, price_cache
 from probablyprofit.api.async_wrapper import run_sync, AsyncClientWrapper
+from probablyprofit.config import get_config
 
-# Circuit breakers for different API endpoints
-_gamma_circuit = CircuitBreaker("polymarket-gamma", failure_threshold=5, timeout=60.0)
-_clob_circuit = CircuitBreaker("polymarket-clob", failure_threshold=5, timeout=60.0)
 
-# Rate limiter (Polymarket allows ~10 req/s)
-_api_rate_limiter = RateLimiter("polymarket-api", calls=8, period=1.0)
+def _get_circuit_breakers():
+    """Get circuit breakers with config values (lazy initialization)."""
+    cfg = get_config()
+    return {
+        "gamma": CircuitBreaker(
+            "polymarket-gamma",
+            failure_threshold=cfg.api.circuit_breaker_threshold,
+            timeout=cfg.api.circuit_breaker_timeout
+        ),
+        "clob": CircuitBreaker(
+            "polymarket-clob",
+            failure_threshold=cfg.api.circuit_breaker_threshold,
+            timeout=cfg.api.circuit_breaker_timeout
+        ),
+    }
+
+
+def _get_rate_limiter():
+    """Get rate limiter with config values (lazy initialization)."""
+    cfg = get_config()
+    return RateLimiter(
+        "polymarket-api",
+        calls=cfg.api.polymarket_rate_limit_calls,
+        period=cfg.api.polymarket_rate_limit_period
+    )
+
+
+# Lazy-initialized circuit breakers and rate limiter
+_circuit_breakers = None
+_api_rate_limiter = None
+
+
+def get_gamma_circuit():
+    """Get gamma API circuit breaker."""
+    global _circuit_breakers
+    if _circuit_breakers is None:
+        _circuit_breakers = _get_circuit_breakers()
+    return _circuit_breakers["gamma"]
+
+
+def get_clob_circuit():
+    """Get CLOB API circuit breaker."""
+    global _circuit_breakers
+    if _circuit_breakers is None:
+        _circuit_breakers = _get_circuit_breakers()
+    return _circuit_breakers["clob"]
+
+
+def get_rate_limiter():
+    """Get API rate limiter."""
+    global _api_rate_limiter
+    if _api_rate_limiter is None:
+        _api_rate_limiter = _get_rate_limiter()
+    return _api_rate_limiter
+
+
+class LRUCache(OrderedDict):
+    """Simple LRU cache with max size limit."""
+
+    def __init__(self, max_size: int = 100):
+        super().__init__()
+        self.max_size = max_size
+
+    def get(self, key, default=None):
+        """Get item and move to end (most recently used)."""
+        if key in self:
+            self.move_to_end(key)
+            return self[key]
+        return default
+
+    def set(self, key, value):
+        """Set item and evict oldest if over capacity."""
+        if key in self:
+            self.move_to_end(key)
+        self[key] = value
+        # Evict oldest items if over capacity
+        while len(self) > self.max_size:
+            self.popitem(last=False)
 
 
 class Market(BaseModel):
@@ -81,7 +156,7 @@ class Order(BaseModel):
     price: float
     status: str = "pending"
     filled_size: float = 0.0
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class Position(BaseModel):
@@ -129,57 +204,96 @@ class PolymarketClient:
             private_key: Polygon private key (starts with 0x)
             chain_id: Chain ID (137 for Polygon mainnet)
             testnet: Whether to use testnet
+
+        Note: For async initialization (recommended), use:
+            client = PolymarketClient(...)
+            await client.initialize_async()
         """
         self.chain_id = chain_id
         self.testnet = testnet
         self.client = None
+        self._initialized = False
 
-        # Initialize CLOB client if credentials provided
+        # Store for deferred initialization
+        self._private_key = private_key
+        self._api_creds = None
+
+        # Initialize CLOB client if credentials provided (sync - may block)
         if private_key:
-            try:
-                host = "https://clob.polymarket.com" if not testnet else "https://clob-test.polymarket.com"
-                self.client = ClobClient(host=host, key=private_key, chain_id=chain_id)
-                
-                # Auto-derive L2 API credentials
-                try:
-                    logger.info("🔐 Deriving API credentials from Private Key...")
-                    creds = self.client.create_or_derive_api_creds()
-                    self.client.set_api_creds(creds)
-                    self._api_creds = creds  # Store for auth headers
-                    logger.info(f"✅ Authenticated as {creds.api_key}")
-                except Exception as e:
-                    logger.warning(f"Failed to auto-derive credentials: {e}")
-                    
-            except Exception as e:
-                logger.error(f"Failed to initialize CLOB client: {e}")
-                self.client = None
+            self._init_clob_client_sync(private_key)
         else:
             logger.warning("⚠️ No Private Key provided - running in READ-ONLY mode")
 
+        # Get config for timeouts and cache settings
+        cfg = get_config()
+
         # HTTP client for CLOB endpoints (orders, prices)
+        host = "https://clob.polymarket.com" if not testnet else "https://clob-test.polymarket.com"
         self.http_client = httpx.AsyncClient(
-            base_url="https://clob.polymarket.com" if not testnet else "https://clob-test.polymarket.com",
-            timeout=30.0,
+            base_url=host,
+            timeout=cfg.api.http_timeout,
         )
-        
+
         # HTTP client for Gamma API (market metadata, volume, descriptions)
         self.gamma_client = httpx.AsyncClient(
             base_url="https://gamma-api.polymarket.com",
-            timeout=30.0,
+            timeout=cfg.api.http_timeout,
         )
 
-        # Cache for market data (now using TTL cache)
+        # Cache for market data (now using TTL cache with config values)
         self._market_cache: AsyncTTLCache[Market] = AsyncTTLCache(
-            ttl=60.0, max_size=1000, name="polymarket-markets"
+            ttl=cfg.api.market_cache_ttl,
+            max_size=cfg.api.market_cache_max_size,
+            name="polymarket-markets"
         )
-        self._positions_cache: Dict[str, Position] = {}
+        # LRU cache for positions to prevent unbounded growth
+        self._positions_cache: LRUCache = LRUCache(max_size=cfg.api.positions_cache_max_size)
 
         # Wrap sync client for async use if available
-        self._async_clob = AsyncClientWrapper(self.client, timeout=30.0) if self.client else None
+        self._async_clob = AsyncClientWrapper(self.client, timeout=cfg.api.http_timeout) if self.client else None
 
-        # Store credentials for auth headers
-        self._api_creds = None
-        self._private_key = private_key
+    def _init_clob_client_sync(self, private_key: str) -> None:
+        """Initialize CLOB client synchronously (may block event loop)."""
+        try:
+            host = "https://clob.polymarket.com" if not self.testnet else "https://clob-test.polymarket.com"
+            self.client = ClobClient(host=host, key=private_key, chain_id=self.chain_id)
+
+            # Auto-derive L2 API credentials (blocking operation)
+            try:
+                logger.info("🔐 Deriving API credentials from Private Key...")
+                creds = self.client.create_or_derive_api_creds()
+                self.client.set_api_creds(creds)
+                self._api_creds = creds
+                logger.info(f"✅ Authenticated as {creds.api_key}")
+            except Exception as e:
+                logger.warning(f"Failed to auto-derive credentials: {e}")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize CLOB client: {e}")
+            self.client = None
+
+    async def initialize_async(self) -> None:
+        """
+        Initialize CLOB client asynchronously (non-blocking).
+
+        Call this after creating the client to avoid blocking the event loop:
+            client = PolymarketClient(private_key=key)
+            await client.initialize_async()
+        """
+        if self._initialized:
+            return
+
+        if self._private_key and not self.client:
+            # Run blocking initialization in thread pool
+            await asyncio.to_thread(self._init_clob_client_sync, self._private_key)
+
+            # Update async wrapper after client is initialized
+            if self.client:
+                cfg = get_config()
+                self._async_clob = AsyncClientWrapper(self.client, timeout=cfg.api.http_timeout)
+
+        self._initialized = True
+        logger.info("PolymarketClient async initialization complete")
 
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get authentication headers for API requests."""
@@ -212,8 +326,6 @@ class PolymarketClient:
         """
         return await self._get_markets_with_retry(active, limit, offset)
 
-    @retry(max_attempts=3, base_delay=2.0)
-    @_gamma_circuit
     async def _get_markets_with_retry(
         self,
         active: bool,
@@ -221,8 +333,16 @@ class PolymarketClient:
         offset: int,
     ) -> List[Market]:
         """Internal method with retry and circuit breaker."""
+        # Get config for retry settings
+        cfg = get_config()
+
         # Rate limit
-        await _api_rate_limiter.acquire()
+        await get_rate_limiter().acquire()
+
+        # Apply circuit breaker
+        circuit = get_gamma_circuit()
+        if not circuit.can_execute():
+            raise NetworkException("Circuit breaker open for Gamma API")
 
         try:
             # Use Gamma API for market metadata (better data than CLOB /markets)
@@ -426,7 +546,7 @@ class PolymarketClient:
             raise ValidationException("outcome cannot be empty")
 
         # Rate limit orders
-        await _api_rate_limiter.acquire()
+        await get_rate_limiter().acquire()
 
         try:
             logger.info(f"Placing {side} order: {size} shares @ ${price} on {outcome}")
@@ -525,6 +645,152 @@ class PolymarketClient:
             logger.error(f"Error cancelling order: {e}")
             return False
 
+    async def cancel_all_orders(self, market_id: Optional[str] = None) -> int:
+        """
+        Cancel all open orders, optionally filtered by market.
+
+        Args:
+            market_id: Optional market to filter by
+
+        Returns:
+            Number of orders cancelled
+        """
+        if not self.client:
+            logger.error("Cannot cancel orders - no API credentials provided")
+            return 0
+
+        try:
+            orders = await self.get_open_orders(market_id)
+            cancelled = 0
+            for order in orders:
+                order_id = order.get("order_id") or order.get("id")
+                if order_id:
+                    success = await self.cancel_order(order_id)
+                    if success:
+                        cancelled += 1
+            logger.info(f"Cancelled {cancelled} orders")
+            return cancelled
+        except Exception as e:
+            logger.error(f"Error cancelling orders: {e}")
+            return 0
+
+    async def get_open_orders(self, market_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get all open orders.
+
+        Args:
+            market_id: Optional market to filter by
+
+        Returns:
+            List of open orders
+        """
+        if not self.client:
+            logger.warning("Cannot fetch orders - no API credentials")
+            return []
+
+        try:
+            await get_rate_limiter().acquire()
+
+            params: Dict[str, Any] = {}
+            if market_id:
+                params["market"] = market_id
+
+            response = await self.http_client.get(
+                "/orders",
+                headers=self._get_auth_headers(),
+                params=params if params else None,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            orders = data if isinstance(data, list) else data.get("orders", [])
+            logger.debug(f"Fetched {len(orders)} open orders")
+            return orders
+
+        except Exception as e:
+            logger.error(f"Error fetching open orders: {e}")
+            return []
+
+    async def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get order details by ID.
+
+        Args:
+            order_id: Order ID
+
+        Returns:
+            Order data or None
+        """
+        if not self.client:
+            logger.warning("Cannot fetch order - no API credentials")
+            return None
+
+        try:
+            await get_rate_limiter().acquire()
+
+            response = await self.http_client.get(
+                f"/orders/{order_id}",
+                headers=self._get_auth_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Order {order_id} not found")
+                return None
+            logger.error(f"Error fetching order {order_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching order {order_id}: {e}")
+            return None
+
+    async def get_fills(
+        self,
+        order_id: Optional[str] = None,
+        market_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get trade fills/executions.
+
+        Args:
+            order_id: Optional order ID to filter by
+            market_id: Optional market to filter by
+            limit: Maximum number of fills to return
+
+        Returns:
+            List of fills
+        """
+        if not self.client:
+            logger.warning("Cannot fetch fills - no API credentials")
+            return []
+
+        try:
+            await get_rate_limiter().acquire()
+
+            params: Dict[str, Any] = {"limit": limit}
+            if order_id:
+                params["order_id"] = order_id
+            if market_id:
+                params["market"] = market_id
+
+            response = await self.http_client.get(
+                "/fills",
+                headers=self._get_auth_headers(),
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            fills = data if isinstance(data, list) else data.get("fills", [])
+            logger.debug(f"Fetched {len(fills)} fills")
+            return fills
+
+        except Exception as e:
+            logger.error(f"Error fetching fills: {e}")
+            return []
+
     async def get_positions(self) -> List[Position]:
         """
         Get current positions from the CLOB API.
@@ -540,7 +806,7 @@ class PolymarketClient:
             import asyncio
 
             # Rate limit
-            await _api_rate_limiter.acquire()
+            await get_rate_limiter().acquire()
 
             # Fetch positions using the REST API with timeout
             # The CLOB API provides /positions endpoint for authenticated users
@@ -587,7 +853,7 @@ class PolymarketClient:
                             pnl=size * (current_price - avg_price)
                         )
                         positions.append(position)
-                        self._positions_cache[f"{market_id}_{outcome}"] = position
+                        self._positions_cache.set(f"{market_id}_{outcome}", position)
                 except Exception as parse_error:
                     logger.debug(f"Skipping position due to parse error: {parse_error}")
                     continue
@@ -618,7 +884,7 @@ class PolymarketClient:
 
         try:
             # Rate limit
-            await _api_rate_limiter.acquire()
+            await get_rate_limiter().acquire()
 
             # Method 1: Try py_clob_client's get_balance (wrap in timeout)
             if hasattr(self.client, "get_balance"):

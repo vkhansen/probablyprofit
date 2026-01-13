@@ -61,3 +61,23 @@ class AgentException(Poly16zException):
 class BacktestException(Poly16zException):
     """Backtesting errors."""
     pass
+
+
+class OrderNotFoundError(OrderException):
+    """Order not found."""
+    pass
+
+
+class OrderCancelError(OrderException):
+    """Failed to cancel order."""
+    pass
+
+
+class OrderModifyError(OrderException):
+    """Failed to modify order."""
+    pass
+
+
+class PartialFillError(OrderException):
+    """Order was only partially filled."""
+    pass

@@ -154,3 +154,28 @@ class BacktestRun(SQLModel, table=True):
     win_rate: float
     created_at: datetime = Field(default_factory=datetime.now)
     config_json: str  # Full config snapshot
+
+
+class RiskStateRecord(SQLModel, table=True):
+    """Persisted risk manager state for crash recovery."""
+
+    __tablename__ = "risk_state"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=datetime.now, index=True)
+
+    # Core state
+    initial_capital: float
+    current_capital: float
+    current_exposure: float
+    daily_pnl: float
+
+    # Positions as JSON: {"market_id": size, ...}
+    open_positions_json: str = "{}"
+
+    # Trade history as JSON array
+    trades_json: str = "[]"
+
+    # Metadata
+    agent_name: str = "unknown"
+    is_latest: bool = True  # Only one record should be "latest"

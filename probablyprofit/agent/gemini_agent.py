@@ -5,6 +5,7 @@ AI-powered trading agent using Google's Gemini models.
 Updated to use the new google-genai SDK.
 """
 
+import asyncio
 import json
 from typing import Any, Optional
 from loguru import logger
@@ -12,9 +13,10 @@ from loguru import logger
 from probablyprofit.agent.base import BaseAgent, Observation, Decision
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException, ValidationException
+from probablyprofit.api.exceptions import AgentException, NetworkException, ValidationException
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.validators import validate_confidence
+from probablyprofit.utils.resilience import retry
 
 # Try new SDK first, fall back to old
 try:
@@ -70,6 +72,56 @@ class GeminiAgent(BaseAgent):
 
         logger.info(f"GeminiAgent '{name}' initialized with model {model}")
 
+    @retry(
+        max_attempts=3,
+        base_delay=2.0,
+        max_delay=30.0,
+        retryable_exceptions=(ConnectionError, TimeoutError, NetworkException),
+    )
+    async def _call_gemini_api(self, prompt: str) -> str:
+        """
+        Call Gemini API with retry logic.
+
+        Args:
+            prompt: The prompt to send
+
+        Returns:
+            Response content text
+
+        Raises:
+            NetworkException: On connection/timeout errors (will be retried)
+            AgentException: On non-retryable errors
+        """
+        try:
+            if NEW_SDK:
+                response = await asyncio.to_thread(
+                    self.genai_client.models.generate_content,
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
+                )
+                return response.text
+            else:
+                response = await asyncio.to_thread(
+                    self.model.generate_content,
+                    prompt
+                )
+                if not response or not response.text:
+                    raise AgentException("Empty response from Gemini")
+                return response.text
+
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning(f"Gemini API connection error (will retry): {e}")
+            raise NetworkException(f"Gemini API connection error: {e}")
+        except Exception as e:
+            error_str = str(e).lower()
+            if any(x in error_str for x in ['timeout', 'connection', 'rate limit', '429', '503', '502', 'quota']):
+                logger.warning(f"Gemini API transient error (will retry): {e}")
+                raise NetworkException(f"Gemini API transient error: {e}")
+            raise AgentException(f"Gemini API error: {e}")
+
     def _format_observation(self, observation: Observation) -> str:
         """
         Format observation using concise formatter for Gemini.
@@ -94,23 +146,8 @@ Respond with a JSON object with this schema:
 {get_decision_schema()}
 """
 
-            if NEW_SDK:
-                # New SDK API
-                response = self.genai_client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                    ),
-                )
-                content = response.text
-            else:
-                # Old SDK API
-                response = self.model.generate_content(prompt)
-                if not response or not response.text:
-                    raise AgentException("Empty response from Gemini")
-                content = response.text
-
+            # Call API with retry logic
+            content = await self._call_gemini_api(prompt)
             logger.debug(f"Gemini response: {content[:200]}...")
 
             data = json.loads(content)

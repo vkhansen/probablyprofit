@@ -6,13 +6,15 @@ Core agent framework implementing the observe-decide-act loop.
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from collections import deque
+from typing import Any, Deque, Dict, List, Optional
 from datetime import datetime
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from probablyprofit.api.client import PolymarketClient, Market, Position, Order
 from probablyprofit.risk.manager import RiskManager
+from probablyprofit.config import get_config
 # Note: Type checking import to avoid circular dependency if needed, but BaseStrategy doesn't import BaseAgent
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -53,9 +55,13 @@ class Decision(BaseModel):
 class AgentMemory(BaseModel):
     """Agent memory for context persistence with optional database storage."""
 
-    observations: List[Observation] = []
-    decisions: List[Decision] = []
-    trades: List[Order] = []
+    # Use deque with maxlen to prevent unbounded memory growth
+    # Note: Pydantic v2 handles deque serialization automatically
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    observations: Deque[Observation] = deque(maxlen=100)
+    decisions: Deque[Decision] = deque(maxlen=100)
+    trades: Deque[Order] = deque(maxlen=100)
     metadata: Dict[str, Any] = {}
 
     # Database persistence
@@ -63,6 +69,23 @@ class AgentMemory(BaseModel):
     _db_manager: Any = None  # DatabaseManager instance
     _agent_name: str = "unknown"
     _agent_type: str = "unknown"
+
+    def __init__(self, **data):
+        """Initialize with proper deque instances."""
+        super().__init__(**data)
+        # Get memory limits from config
+        cfg = get_config()
+        max_obs = cfg.agent.memory_max_observations
+        max_dec = cfg.agent.memory_max_decisions
+        max_trades = cfg.agent.memory_max_trades
+
+        # Ensure deques are properly initialized with maxlen from config
+        if not isinstance(self.observations, deque) or self.observations.maxlen != max_obs:
+            self.observations = deque(self.observations, maxlen=max_obs)
+        if not isinstance(self.decisions, deque) or self.decisions.maxlen != max_dec:
+            self.decisions = deque(self.decisions, maxlen=max_dec)
+        if not isinstance(self.trades, deque) or self.trades.maxlen != max_trades:
+            self.trades = deque(self.trades, maxlen=max_trades)
 
     def configure_persistence(self, db_manager: Any, agent_name: str = "unknown", agent_type: str = "unknown") -> None:
         """Enable database persistence."""
@@ -74,10 +97,8 @@ class AgentMemory(BaseModel):
 
     async def add_observation(self, observation: Observation) -> None:
         """Add observation to memory and optionally persist."""
+        # deque with maxlen automatically evicts oldest items
         self.observations.append(observation)
-        # Keep only last 100 observations
-        if len(self.observations) > 100:
-            self.observations = self.observations[-100:]
 
         # Persist to database
         if self.enable_persistence and self._db_manager:
@@ -104,9 +125,8 @@ class AgentMemory(BaseModel):
 
     async def add_decision(self, decision: Decision) -> None:
         """Add decision to memory and optionally persist."""
+        # deque with maxlen automatically evicts oldest items
         self.decisions.append(decision)
-        if len(self.decisions) > 100:
-            self.decisions = self.decisions[-100:]
 
         # Persist to database
         if self.enable_persistence and self._db_manager:
@@ -133,9 +153,8 @@ class AgentMemory(BaseModel):
 
     async def add_trade(self, trade: Order) -> None:
         """Add trade to memory and optionally persist."""
+        # deque with maxlen automatically evicts oldest items
         self.trades.append(trade)
-        if len(self.trades) > 100:
-            self.trades = self.trades[-100:]
 
         # Persist to database
         if self.enable_persistence and self._db_manager:
@@ -212,7 +231,10 @@ class BaseAgent(ABC):
         self.kelly_fraction = 0.25
 
         self.memory = AgentMemory()
-        self.running = False
+
+        # Thread-safe running state using asyncio.Event
+        self._stop_event = asyncio.Event()
+        self._running = False  # For synchronous checks only
 
         # Track open positions to avoid duplicates
         self._open_positions: set = set()  # Set of market_id:outcome
@@ -233,6 +255,20 @@ class BaseAgent(ABC):
 
         mode_str = " [DRY RUN MODE]" if dry_run else ""
         logger.info(f"Agent '{name}' initialized{mode_str}")
+
+    @property
+    def running(self) -> bool:
+        """Check if agent is running (thread-safe)."""
+        return self._running and not self._stop_event.is_set()
+
+    @running.setter
+    def running(self, value: bool) -> None:
+        """Set running state (for backwards compatibility)."""
+        self._running = value
+        if not value:
+            self._stop_event.set()
+        else:
+            self._stop_event.clear()
 
     def _get_market_name(self, market_id: str, max_len: int = 60) -> str:
         """Get human-readable market name from ID."""
@@ -452,13 +488,16 @@ class BaseAgent(ABC):
         logger.info(f"[{self.name}] Starting agent loop (interval: {self.loop_interval}s)")
         self.running = True
 
+        # Get config values for error recovery
+        cfg = get_config()
+
         # Error tracking for recovery
         self._error_count = 0
         self._consecutive_errors = 0
         self._loop_count = 0
-        self._max_consecutive_errors = 10  # Stop after this many consecutive failures
-        self._base_backoff = 5.0  # Base backoff in seconds
-        self._max_backoff = 300.0  # Max backoff (5 minutes)
+        self._max_consecutive_errors = cfg.agent.max_consecutive_errors
+        self._base_backoff = cfg.agent.base_backoff
+        self._max_backoff = cfg.agent.max_backoff
 
         # Try to get recovery manager
         recovery_manager = None
@@ -490,8 +529,12 @@ class BaseAgent(ABC):
                         self._consecutive_errors += 1
 
                     # Checkpoint periodically
-                    if recovery_manager and self._loop_count % 5 == 0:
+                    if recovery_manager and self._loop_count % cfg.agent.checkpoint_interval == 0:
                         await recovery_manager.checkpoint(self)
+
+                    # Save risk state periodically
+                    if self._loop_count % cfg.agent.risk_save_interval == 0 and hasattr(self.risk_manager, 'save_state'):
+                        await self.risk_manager.save_state(agent_name=self.name)
 
                 except Exception as e:
                     self._error_count += 1
@@ -523,21 +566,72 @@ class BaseAgent(ABC):
                     await asyncio.sleep(backoff)
                     continue  # Skip normal sleep, we already waited
 
-                # Wait before next iteration
-                await asyncio.sleep(self.loop_interval)
+                # Wait before next iteration, but check for stop signal
+                try:
+                    await asyncio.wait_for(
+                        self._stop_event.wait(),
+                        timeout=self.loop_interval
+                    )
+                    # If we get here, stop was requested
+                    logger.info(f"[{self.name}] Stop signal received")
+                    break
+                except asyncio.TimeoutError:
+                    # Normal timeout, continue loop
+                    pass
 
         except asyncio.CancelledError:
             logger.info(f"[{self.name}] Agent loop cancelled")
-            self.running = False
+        finally:
+            # Graceful shutdown cleanup
+            await self._cleanup()
+            self._running = False
 
             # Final checkpoint on shutdown
             if recovery_manager:
                 await recovery_manager.checkpoint(self, force=True)
 
+    async def _cleanup(self) -> None:
+        """Perform graceful shutdown cleanup."""
+        logger.info(f"[{self.name}] Performing cleanup...")
+
+        try:
+            # Save risk manager state for crash recovery
+            if hasattr(self.risk_manager, 'save_state'):
+                await self.risk_manager.save_state(agent_name=self.name)
+                logger.debug(f"[{self.name}] Risk state saved")
+        except Exception as e:
+            logger.warning(f"[{self.name}] Error saving risk state: {e}")
+
+        try:
+            # Close the API client connection
+            if hasattr(self.client, 'close'):
+                await self.client.close()
+                logger.debug(f"[{self.name}] API client closed")
+        except Exception as e:
+            logger.warning(f"[{self.name}] Error closing API client: {e}")
+
+        try:
+            # Flush any pending database writes
+            if self.memory.enable_persistence and self.memory._db_manager:
+                # Give pending writes a chance to complete
+                await asyncio.sleep(0.1)
+                logger.debug(f"[{self.name}] Database writes flushed")
+        except Exception as e:
+            logger.warning(f"[{self.name}] Error flushing database: {e}")
+
+        logger.info(f"[{self.name}] Cleanup complete")
+
     def stop(self) -> None:
-        """Stop the agent loop."""
+        """Stop the agent loop gracefully."""
         logger.info(f"[{self.name}] Stopping agent...")
-        self.running = False
+        self._stop_event.set()
+
+    async def stop_async(self) -> None:
+        """Stop the agent loop and wait for cleanup (async version)."""
+        logger.info(f"[{self.name}] Stopping agent (async)...")
+        self._stop_event.set()
+        # Give the loop a moment to exit gracefully
+        await asyncio.sleep(0.2)
 
     def get_health_status(self) -> Dict[str, Any]:
         """Get agent health status."""

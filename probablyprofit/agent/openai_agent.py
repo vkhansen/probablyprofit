@@ -4,6 +4,7 @@ OpenAI Agent
 AI-powered trading agent using GPT-4 for decision-making.
 """
 
+import asyncio
 import json
 from typing import Any, Optional
 from openai import OpenAI
@@ -12,9 +13,10 @@ from loguru import logger
 from probablyprofit.agent.base import BaseAgent, Observation, Decision
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException, ValidationException
+from probablyprofit.api.exceptions import AgentException, NetworkException, ValidationException
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.validators import validate_confidence
+from probablyprofit.utils.resilience import retry
 
 
 class OpenAIAgent(BaseAgent):
@@ -45,6 +47,47 @@ class OpenAIAgent(BaseAgent):
         self.temperature = 0.7
 
         logger.info(f"OpenAIAgent '{name}' initialized with model {model}")
+
+    @retry(
+        max_attempts=3,
+        base_delay=2.0,
+        max_delay=30.0,
+        retryable_exceptions=(ConnectionError, TimeoutError, NetworkException),
+    )
+    async def _call_openai_api(self, api_kwargs: dict) -> str:
+        """
+        Call OpenAI API with retry logic.
+
+        Args:
+            api_kwargs: Arguments to pass to the API
+
+        Returns:
+            Response content text
+
+        Raises:
+            NetworkException: On connection/timeout errors (will be retried)
+            AgentException: On non-retryable errors
+        """
+        try:
+            response = await asyncio.to_thread(
+                self.openai.chat.completions.create,
+                **api_kwargs
+            )
+
+            if not response.choices or len(response.choices) == 0:
+                raise AgentException("No response choices from OpenAI")
+
+            return response.choices[0].message.content
+
+        except (ConnectionError, TimeoutError) as e:
+            logger.warning(f"OpenAI API connection error (will retry): {e}")
+            raise NetworkException(f"OpenAI API connection error: {e}")
+        except Exception as e:
+            error_str = str(e).lower()
+            if any(x in error_str for x in ['timeout', 'connection', 'rate limit', '429', '503', '502']):
+                logger.warning(f"OpenAI API transient error (will retry): {e}")
+                raise NetworkException(f"OpenAI API transient error: {e}")
+            raise AgentException(f"OpenAI API error: {e}")
 
     def _format_observation(self, observation: Observation) -> str:
         """
@@ -131,12 +174,8 @@ Output schema:
             if not is_reasoning_model:
                 api_kwargs["response_format"] = {"type": "json_object"}
 
-            response = self.openai.chat.completions.create(**api_kwargs)
-
-            if not response.choices or len(response.choices) == 0:
-                raise AgentException("No response choices from OpenAI")
-
-            content = response.choices[0].message.content
+            # Call API with retry logic
+            content = await self._call_openai_api(api_kwargs)
             logger.debug(f"AI response: {content[:200]}...")
 
             data = json.loads(content)
