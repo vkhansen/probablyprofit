@@ -63,9 +63,7 @@ async def main():
 
     # Initialize Polymarket client (read-only mode if no credentials)
     client = PolymarketClient(
-        api_key=os.getenv("POLYMARKET_API_KEY"),
-        secret=os.getenv("POLYMARKET_SECRET"),
-        passphrase=os.getenv("POLYMARKET_PASSPHRASE"),
+        private_key=os.getenv("PRIVATE_KEY"),
     )
 
     # Initialize risk manager
