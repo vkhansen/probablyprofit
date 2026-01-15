@@ -37,4 +37,4 @@ jobs:
         continue-on-error: true  # Don't fail on type errors (yet)
         
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: pytest probablyprofit/tests/ -v --tb=short
