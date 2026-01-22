@@ -901,9 +901,14 @@ class PolymarketClient:
                         self._positions_cache.set(f"{market_id}_{outcome}", position)
                 except Exception as parse_error:
                     position_parse_failures.append(
-                        {"market_id": market_id if market_id else "unknown", "error": str(parse_error)}
+                        {
+                            "market_id": market_id if market_id else "unknown",
+                            "error": str(parse_error),
+                        }
                     )
-                    logger.warning(f"Failed to parse position for market {market_id}: {parse_error}")
+                    logger.warning(
+                        f"Failed to parse position for market {market_id}: {parse_error}"
+                    )
                     continue
 
             if position_parse_failures:

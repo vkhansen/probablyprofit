@@ -369,8 +369,7 @@ def validate_strategy(
             "'Buy YES when confident', 'Avoid markets with low volume', or 'Hold if uncertain'."
         )
         logger.warning(
-            "Strategy text doesn't contain trading terms. "
-            "AI may not understand trading intent."
+            "Strategy text doesn't contain trading terms. " "AI may not understand trading intent."
         )
 
     # Check for actionable instructions

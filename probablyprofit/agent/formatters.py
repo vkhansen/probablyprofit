@@ -93,8 +93,7 @@ class ObservationFormatter:
         Returns:
             Formatted observation string
         """
-        sections = [
-            f"""Current Market State:
+        sections = [f"""Current Market State:
 
 Time: {observation.timestamp.strftime('%Y-%m-%d %H:%M:%S')}
 Account Balance: ${observation.balance:,.2f}
@@ -106,8 +105,7 @@ Top Markets ({min(len(observation.markets), max_markets)}):
 {ObservationFormatter.format_markets(observation.markets, max_markets)}
 
 Recent Trading History:
-{memory.get_recent_history(include_history)}"""
-        ]
+{memory.get_recent_history(include_history)}"""]
 
         # Add intelligence context if available
         if observation.news_context:

@@ -162,7 +162,9 @@ class GoogleTrendsClient:
                 return trend_data
 
             # If API fails, return neutral data
-            logger.warning(f"Google Trends API unavailable for '{keyword}', using neutral fallback data")
+            logger.warning(
+                f"Google Trends API unavailable for '{keyword}', using neutral fallback data"
+            )
             return TrendData(
                 keyword=keyword,
                 current_interest=50,

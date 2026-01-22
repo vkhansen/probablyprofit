@@ -97,8 +97,7 @@ class HistoricalDataStore:
         """Initialize database schema."""
         async with aiosqlite.connect(self.db_path) as db:
             # Market snapshots table
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE TABLE IF NOT EXISTS market_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     condition_id TEXT NOT NULL,
@@ -111,27 +110,21 @@ class HistoricalDataStore:
                     metadata TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Index for efficient queries
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_snapshots_market_time
                 ON market_snapshots (condition_id, timestamp)
-            """
-            )
+            """)
 
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_snapshots_timestamp
                 ON market_snapshots (timestamp)
-            """
-            )
+            """)
 
             # Price points table (more granular)
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE TABLE IF NOT EXISTS price_points (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     condition_id TEXT NOT NULL,
@@ -141,19 +134,15 @@ class HistoricalDataStore:
                     volume REAL DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_prices_market_time
                 ON price_points (condition_id, timestamp)
-            """
-            )
+            """)
 
             # Trade history table
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE TABLE IF NOT EXISTS trade_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     market_id TEXT NOT NULL,
@@ -168,15 +157,12 @@ class HistoricalDataStore:
                     metadata TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trades_timestamp
                 ON trade_history (timestamp)
-            """
-            )
+            """)
 
             await db.commit()
 

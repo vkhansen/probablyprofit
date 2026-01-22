@@ -31,9 +31,7 @@ from probablyprofit.risk.manager import RiskManager
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="ProbablyProfit: AI Trading Bot for Polymarket"
-    )
+    parser = argparse.ArgumentParser(description="ProbablyProfit: AI Trading Bot for Polymarket")
 
     # Platform selection
     parser.add_argument(

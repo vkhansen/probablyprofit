@@ -55,7 +55,9 @@ class MarketSentiment(BaseModel):
     def format_for_prompt(self) -> str:
         """Format sentiment for AI agent prompt."""
         score = self.to_score()
-        direction = "📈 BULLISH" if score > 0.2 else ("📉 BEARISH" if score < -0.2 else "➡️ NEUTRAL")
+        direction = (
+            "📈 BULLISH" if score > 0.2 else ("📉 BEARISH" if score < -0.2 else "➡️ NEUTRAL")
+        )
 
         lines = [
             f"📊 SENTIMENT ANALYSIS:",
