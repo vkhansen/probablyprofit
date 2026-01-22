@@ -3,7 +3,7 @@ import { LandingPage } from './pages';
 
 function App() {
   return (
-    <BrowserRouter basename="/probablyprofit">
+    <BrowserRouter basename="/">
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<LandingPage />} />
