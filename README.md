@@ -6,6 +6,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/probablyprofit?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/probablyprofit/)
 [![CI](https://img.shields.io/github/actions/workflow/status/randomness11/probablyprofit/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI)](https://github.com/randomness11/probablyprofit/actions/workflows/ci.yml)
+[![Security](https://img.shields.io/badge/Security-Bandit-green?style=for-the-badge&logo=python&logoColor=white)](https://github.com/randomness11/probablyprofit/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/randomness11/probablyprofit?style=for-the-badge&logo=github)](https://github.com/randomness11/probablyprofit/stargazers)
