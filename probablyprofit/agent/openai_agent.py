@@ -14,9 +14,15 @@ from openai import OpenAI
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException, NetworkException, ValidationException
+from probablyprofit.api.exceptions import (
+    AgentException,
+    NetworkException,
+    SchemaValidationError,
+    ValidationException,
+)
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.resilience import retry
+from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
     validate_confidence,
     validate_strategy,
@@ -69,7 +75,12 @@ class OpenAIAgent(BaseAgent):
         max_attempts=3,
         base_delay=2.0,
         max_delay=30.0,
-        retryable_exceptions=(ConnectionError, TimeoutError, NetworkException),
+        retryable_exceptions=(
+            ConnectionError,
+            TimeoutError,
+            NetworkException,
+            SchemaValidationError,
+        ),
     )
     async def _call_openai_api(self, api_kwargs: dict) -> str:
         """
@@ -190,47 +201,25 @@ Output schema:
             content = await self._call_openai_api(api_kwargs)
             logger.debug(f"AI response: {content[:200]}...")
 
-            data = json.loads(content)
+            # Validate and parse response using Pydantic schema
+            decision = validate_and_parse_decision(content, Decision)
 
-            # Validate and create decision with proper error handling
-            action = data.get("action", "hold")
-            confidence = float(data.get("confidence", 0.5))
+            # Additional clamping if Pydantic allowed out-of-bounds values (depending on model)
+            if decision.confidence < 0 or decision.confidence > 1:
+                logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
+                decision.confidence = max(0.0, min(1.0, decision.confidence))
 
-            # Validate confidence
-            try:
-                validate_confidence(confidence)
-            except ValidationException:
-                logger.warning(f"Invalid confidence {confidence}, clamping to 0-1")
-                confidence = max(0.0, min(1.0, confidence))
+            if decision.price is not None:
+                if decision.price < 0 or decision.price > 1:
+                    logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
+                    decision.price = max(0.0, min(1.0, decision.price))
 
-            # Parse and validate price
-            price = None
-            if "price" in data and data["price"] is not None:
-                try:
-                    price = float(data["price"])
-                    if price < 0 or price > 1:
-                        logger.warning(f"Invalid price {price}, clamping to 0-1")
-                        price = max(0.0, min(1.0, price))
-                except (ValueError, TypeError) as e:
-                    logger.warning(f"Could not parse price: {e}")
-                    price = None
+            return decision
 
-            return Decision(
-                action=action,
-                market_id=data.get("market_id"),
-                outcome=data.get("outcome"),
-                size=float(data.get("size", 0)),
-                price=price,
-                reasoning=data.get("reasoning", ""),
-                confidence=confidence,
-            )
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from OpenAI: {e}")
-            raise AgentException(f"Invalid JSON in AI response: {e}")
-        except ValueError as e:
-            logger.error(f"Invalid numeric value in decision: {e}")
-            raise AgentException(f"Invalid numeric value: {e}")
+        except SchemaValidationError as e:
+            # Re-raise SchemaValidationError to trigger retry
+            logger.warning(f"Schema validation failed (will retry): {e}")
+            raise
         except Exception as e:
             logger.error(f"Error getting decision from OpenAI: {e}")
             raise AgentException(f"OpenAI decision error: {e}")

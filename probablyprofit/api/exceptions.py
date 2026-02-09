@@ -39,6 +39,12 @@ class ValidationException(Poly16zException):
     pass
 
 
+class SchemaValidationError(ValidationException):
+    """Schema validation errors for LLM outputs."""
+
+    pass
+
+
 class OrderException(Poly16zException):
     """Order placement/management errors."""
 

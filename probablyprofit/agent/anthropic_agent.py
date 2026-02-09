@@ -13,10 +13,16 @@ from loguru import logger
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException, NetworkException, ValidationException
+from probablyprofit.api.exceptions import (
+    AgentException,
+    NetworkException,
+    SchemaValidationError,
+    ValidationException,
+)
 from probablyprofit.risk.manager import RiskManager
-from probablyprofit.utils.ai_rate_limiter import AIRateLimiter, anthropic_rate_limited
+from probablyprofit.utils.ai_rate_limiter import AIRateLimiter
 from probablyprofit.utils.resilience import retry
+from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
     validate_confidence,
     validate_strategy,
@@ -132,15 +138,31 @@ class AnthropicAgent(BaseAgent):
             ValidationException: If decision data is invalid
         """
         try:
-            # Try to parse as JSON first
-            if "```json" in response:
-                json_start = response.find("```json") + 7
-                json_end = response.find("```", json_start)
-                json_str = response[json_start:json_end].strip()
-                data = json.loads(json_str)
-            elif response.strip().startswith("{"):
-                data = json.loads(response)
-            else:
+            # Use unified validation utility
+            try:
+                decision = validate_and_parse_decision(response, Decision)
+                
+                # Additional clamping if needed
+                if decision.confidence < 0 or decision.confidence > 1:
+                    logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
+                    decision.confidence = max(0.0, min(1.0, decision.confidence))
+
+                if decision.price is not None:
+                    if decision.price < 0 or decision.price > 1:
+                        logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
+                        decision.price = max(0.0, min(1.0, decision.price))
+                
+                return decision
+
+            except SchemaValidationError as e:
+                # If strict JSON parsing fails, attempt natural language fallback
+                # BUT only if it really doesn't look like JSON
+                if "{" in response and "}" in response:
+                     # It tried to be JSON but failed schema - re-raise to trigger retry
+                     raise e
+                
+                logger.info("Response doesn't look like JSON, attempting natural language fallback")
+                
                 # Parse from natural language response
                 response_lower = response.lower()
 
@@ -152,49 +174,16 @@ class AnthropicAgent(BaseAgent):
                 else:
                     action = "hold"
 
-                data = {
-                    "action": action,
-                    "reasoning": response,
-                }
+                # Construct fallback decision
+                return Decision(
+                    action=action,
+                    reasoning=response,
+                    confidence=0.5,
+                )
 
-            # Validate and create decision
-            action = data.get("action", "hold")
-            confidence = float(data.get("confidence", 0.5))
-
-            # Validate confidence
-            try:
-                validate_confidence(confidence)
-            except ValidationException:
-                logger.warning(f"Invalid confidence {confidence}, clamping to 0-1")
-                confidence = max(0.0, min(1.0, confidence))
-
-            # Parse price with validation
-            price = None
-            if "price" in data and data["price"] is not None:
-                price = float(data["price"])
-                if price < 0 or price > 1:
-                    logger.warning(f"Invalid price {price}, clamping to 0-1")
-                    price = max(0.0, min(1.0, price))
-
-            decision = Decision(
-                action=action,
-                market_id=data.get("market_id"),
-                outcome=data.get("outcome"),
-                size=float(data.get("size", 0)),
-                price=price,
-                reasoning=data.get("reasoning", response),
-                confidence=confidence,
-            )
-
-            return decision
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON decision: {e}")
-            raise AgentException(f"Invalid JSON in AI response: {e}")
-        except ValueError as e:
-            logger.error(f"Invalid numeric value in decision: {e}")
-            raise AgentException(f"Invalid numeric value: {e}")
         except Exception as e:
+            if isinstance(e, SchemaValidationError):
+                raise
             logger.error(f"Unexpected error parsing decision: {e}")
             raise AgentException(f"Error parsing decision: {e}")
 
@@ -206,6 +195,7 @@ class AnthropicAgent(BaseAgent):
             ConnectionError,
             TimeoutError,
             NetworkException,
+            SchemaValidationError,
         ),
     )
     async def _call_claude_api(self, messages: list) -> str:
@@ -313,14 +303,10 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
 
             return decision
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from Claude: {e}")
-            # Safe default for parsing errors only
-            return Decision(
-                action="hold",
-                reasoning=f"JSON parsing error, defaulting to hold: {e}",
-                confidence=0.0,
-            )
+        except SchemaValidationError as e:
+             # Retry decorator will catch this
+             logger.warning(f"Schema validation failed (will retry): {e}")
+             raise
         except AgentException:
             # Re-raise agent exceptions (already logged)
             raise
