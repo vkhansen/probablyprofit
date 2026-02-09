@@ -145,12 +145,8 @@ def get_decision_schema() -> str:
     Returns:
         JSON schema as string
     """
-    return """{
-    "action": "buy" | "sell" | "hold",
-    "market_id": "string (condition_id of the market if buy/sell)",
-    "outcome": "string (outcome to bet on if buy/sell)",
-    "size": float (number of shares),
-    "price": float (limit price between 0 and 1 if buy/sell)",
-    "reasoning": "string (brief explanation of decision)",
-    "confidence": float (0.0 to 1.0)
-}"""
+    from probablyprofit.agent.base import Decision
+
+    # Generate schema directly from the Pydantic model
+    # This ensures the prompt always matches the validation logic
+    return Decision.model_json_schema()
