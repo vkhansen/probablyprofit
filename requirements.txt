@@ -1,0 +1,6 @@
+sqlalchemy
+alembic
+python-dotenv
+requests
+google.genai
+google-generativeai
