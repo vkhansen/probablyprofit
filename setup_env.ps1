@@ -65,18 +65,10 @@ if (Test-Path $sourceDir) {
 # Install dependencies
 Write-Host "Installing dependencies..."
 
-# Install root requirements if they exist, filtering out probablyprofit to strictly use source
+# Install root requirements if they exist
 if (Test-Path "requirements.txt") {
-    Write-Host "Installing dependencies from root requirements.txt (excluding probablyprofit)..."
-    # Filter out probablyprofit lines to avoid PyPI installation
-    Get-Content requirements.txt | Where-Object { $_ -notmatch "^probablyprofit" } | Set-Content requirements.temp.txt
-    try {
-        & $venvPython -m pip install -r requirements.temp.txt
-    } finally {
-        if (Test-Path requirements.temp.txt) {
-            Remove-Item requirements.temp.txt
-        }
-    }
+    Write-Host "Installing dependencies from root requirements.txt..."
+    & $venvPython -m pip install -r requirements.txt
 }
 
 # Install probablyprofit from source (editable mode) with [full] extras
