@@ -149,15 +149,76 @@ Write-Host "Starting Qdrant..." -ForegroundColor Green
 
 # Check if container exists
 $containerName = "qdrant_nomic"
-Write-Host "Checking for existing container: $containerName" -ForegroundColor Yellow
+# ──────────────────────────────────────────────────────────────
+# Aggressive cleanup for Windows/Docker port ghost bindings
+# ──────────────────────────────────────────────────────────────
 
-$exists = (docker ps -a --filter "name=^/$containerName$" --format '{{.ID}}') -ne ''
-Write-Host "Container exists: $exists" -ForegroundColor Yellow
+Write-Host "Performing Docker cleanup to avoid 'port already allocated' ghosts..." -ForegroundColor Yellow
 
-if ($exists) {
-    Write-Host "Removing existing container $containerName..." -ForegroundColor Yellow
-    docker rm -f $containerName | Out-Null
+# 1. Force-remove the target container again (just in case)
+docker rm -f $containerName 2>$null
+
+# 2. Prune unused networks (this fixes most stale port allocations)
+Write-Host "Pruning unused networks..." -ForegroundColor Cyan
+docker network prune -f
+
+# Optional but helpful: prune stopped containers & dangling stuff (low risk)
+docker container prune -f 2>$null
+docker system prune -f --filter "until=24h" 2>$null   # only things older than 1 day, very safe
+
+# 3. Check if port 6333 is STILL bound after prune
+$portCheck = netstat -ano | Select-String ":6333" | Select-String "LISTENING"
+if ($portCheck) {
+    Write-Host "Port 6333 still appears allocated after prune! Attempting Docker restart..." -ForegroundColor Red
+    
+    # Soft restart Docker Desktop (Windows-only)
+    Write-Host "Stopping Docker Desktop..." -ForegroundColor Yellow
+    Stop-Process -Name "Docker Desktop" -Force -ErrorAction SilentlyContinue
+    Stop-Process -Name "com.docker.*" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 8
+
+    Write-Host "Starting Docker Desktop again..." -ForegroundColor Yellow
+    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    
+    # Wait for Docker to come back
+    $maxWaitDocker = 90
+    $waitedDocker = 0
+    while ($waitedDocker -lt $maxWaitDocker) {
+        try {
+            docker version 2>$null | Out-Null
+            Write-Host "Docker is back online." -ForegroundColor Green
+            break
+        } catch {
+            Start-Sleep -Seconds 5
+            $waitedDocker += 5
+            Write-Host "Waiting for Docker ($waitedDocker s)..." -ForegroundColor Yellow
+        }
+    }
+    
+    if ($waitedDocker -ge $maxWaitDocker) {
+        Write-Host "Docker failed to restart automatically. Please restart Docker Desktop manually and re-run the script." -ForegroundColor Red
+        Pause
+        exit
+    }
+    
+    # Final check after restart
+    $portCheckAfter = netstat -ano | Select-String ":6333" | Select-String "LISTENING"
+    if ($portCheckAfter) {
+        Write-Host "Port 6333 STILL allocated after Docker restart. Manual intervention needed:" -ForegroundColor Red
+        Write-Host "  1. Quit Docker Desktop"
+        Write-Host "  2. Delete $env:USERPROFILE\.docker (will be recreated)"
+        Write-Host "  3. Restart Docker Desktop"
+        Write-Host "  4. Re-run script"
+        Pause
+        exit
+    }
+} else {
+    Write-Host "Port cleanup looks good." -ForegroundColor Green
 }
+
+# ──────────────────────────────────────────────────────────────
+# Now safe to create the container
+# ──────────────────────────────────────────────────────────────
 
 Write-Host "Creating and starting new container..." -ForegroundColor Green
 try {
