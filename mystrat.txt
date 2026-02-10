@@ -1,0 +1,1 @@
+make some trades to just prove the code works, just trade randomly

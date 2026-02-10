@@ -1,38 +1,63 @@
-# Task List: Pydantic Schema Validation for LLM Responses
+# API Enhancement: Category/Search Support for Polymarket Markets
 
-This task list outlines the phased approach to refactoring the agent codebases to enforce Pydantic schema validation for all LLM responses.
+## Overview
+Extend the `get_markets()` method in `probablyprofit/api/client.py` to support category and search filtering via Polymarket Gamma API parameters. Add whitelist/blacklist keyword filtering loaded from `.env` variables for client-side filtering.
 
-## Phase 1: Analysis & Design
-- [x] Analyze existing agent implementations (`OpenAIAgent`, `AnthropicAgent`, `GeminiAgent`).
-- [ ] Design a unified validation strategy using Pydantic's `model_validate_json` or `ValidationError` handling.
-- [ ] Determine how to integrate validation failures into the existing `@retry` mechanism.
-- [ ] Define the target "Strict" Decision schema if the current one needs adjustment for LLM consumption.
+## Tasks
 
-## Phase 2: Core Validation Infrastructure
-- [ ] Create a generic `validate_and_parse_decision(json_str: str) -> Decision` utility function.
-    - This function should handle `json.JSONDecodeError` and Pydantic `ValidationError`.
-    - It should sanitize common LLM JSON quirks (e.g., markdown code blocks).
-- [ ] Update `Decision` model if necessary to support specific validation rules (e.g., `Field` constraints for `confidence` between 0-1).
+### 1. Research Polymarket Gamma API Parameters
+- [ ] Investigate supported query parameters for `/markets` endpoint (e.g., `category`, `search`, `tags`)
+- [ ] Check if API supports category-based filtering (e.g., `category=crypto`)
+- [ ] Document available filters in code comments
 
-## Phase 3: Agent Refactoring
-- [ ] **OpenAIAgent**:
-    - [ ] Update `decide` method to use `Decision` schema for validation.
-    - [ ] Leverage OpenAI's "Structured Outputs" (if library version allows) or enforce strict JSON schema in system prompt.
-- [ ] **AnthropicAgent**:
-    - [ ] Update `decide` method to parse response using the shared validation utility.
-    - [ ] Refine prompt to ensure JSON output matches the Pydantic schema exactly.
-- [ ] **GeminiAgent**:
-    - [ ] Update `decide` method to use the validation utility.
-    - [ ] Ensure `response_mime_type="application/json"` is effectively used with the schema.
+### 2. Update Configuration (.env Support)
+- [ ] Add new config fields in `probablyprofit/config.py`:
+  - `market_whitelist_keywords`: List of keywords to include (e.g., "15M", "crypto")
+  - `market_blacklist_keywords`: List of keywords to exclude
+  - `market_category`: Optional category filter (e.g., "crypto")
+  - `market_search`: Optional search term
+- [ ] Load these from `.env` file with defaults
 
-## Phase 4: Reliability & Retries
-- [ ] Implement a specific `SchemaValidationError` that can trigger the existing `@retry` decorator.
-- [ ] (Optional) Modify retry logic to feed validation errors back to the LLM for self-correction (if feasible within current architecture).
+### 3. Extend get_markets() Method
+- [ ] Modify `get_markets()` signature to accept new params:
+  ```python
+  async def get_markets(
+      self,
+      active: bool = True,
+      limit: int = 100,
+      offset: int = 0,
+      category: Optional[str] = None,
+      search: Optional[str] = None,
+  ) -> List[Market]:
+  ```
+- [ ] Update `_get_markets_with_retry()` to pass category/search to API params
+- [ ] Add client-side whitelist/blacklist filtering after API response
 
-## Phase 5: Testing & Deployment
-- [ ] Create unit tests for `validate_and_parse_decision`.
-    - Test valid JSON.
-    - Test invalid JSON (syntax error).
-    - Test valid JSON but invalid schema (wrong types, missing fields).
-- [ ] Verify each agent against mock responses ensuring they retry on schema failures.
-- [ ] Deploy changes.
+### 4. Update Base Agent Observe Logic
+- [ ] Modify `observe()` in `probablyprofit/agent/base.py` to use config values:
+  ```python
+  markets = await self.client.get_markets(
+      active=True,
+      limit=cfg.api.market_fetch_limit,
+      category=cfg.api.market_category,
+      search=cfg.api.market_search,
+  )
+  ```
+- [ ] Apply whitelist/blacklist filtering if configured
+
+### 5. Update Strategy Classes
+- [ ] Ensure `CustomStrategy` respects new config filters
+- [ ] Add `CategoryStrategy` class for category-based trading
+
+### 6. CLI Integration
+- [ ] Add CLI options in `probablyprofit/cli/main.py` for category/search overrides
+- [ ] Update help text and examples
+
+### 7. Testing
+- [ ] Add unit tests for new filtering logic
+- [ ] Test with real API calls (dry-run mode)
+- [ ] Verify whitelist/blacklist works with sample markets
+
+### 8. Documentation
+- [ ] Update `docs/api-reference.md` with new get_markets params
+- [ ] Add examples in `docs/strategy-guide.md` for category targeting

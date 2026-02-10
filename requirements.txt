@@ -7,3 +7,5 @@ google-generativeai
 sqlmodel
 aiosqlite
 greenlet
+anthropic
+py-clob-client

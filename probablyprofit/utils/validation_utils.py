@@ -71,6 +71,13 @@ def validate_and_parse_decision(
             else:
                 raise SchemaValidationError(f"Invalid JSON format: {e}")
 
+        # Handle case where LLM returns an array of decisions - take the first one
+        if isinstance(data, list):
+            if not data:
+                raise SchemaValidationError("Empty decision array returned")
+            logger.warning("LLM returned array of decisions, using first one")
+            data = data[0]
+
         # Validate against Pydantic model
         return model_class.model_validate(data)
 
