@@ -9,3 +9,5 @@ aiosqlite
 greenlet
 anthropic
 py-clob-client
+openai
+pandas

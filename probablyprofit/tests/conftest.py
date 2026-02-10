@@ -215,7 +215,7 @@ class MockAgent(BaseAgent):
     def __init__(self, *args, decision_to_return: Decision = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.decision_to_return = decision_to_return or Decision(
-            action="hold", reasoning="Test hold decision", confidence=0.5
+            action=Action.HOLD, reasoning="Test hold decision", confidence=0.5
         )
 
     async def decide(self, observation: Observation) -> Decision:
