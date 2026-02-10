@@ -442,11 +442,11 @@ class BaseAgent(ABC):
         await self.memory.add_decision(decision)
 
         # Handle different actions
-        if decision.action == "hold":
+        if decision.action == Action.HOLD:
             logger.info(f"[{self.name}] Holding - no action taken")
             return True
 
-        elif decision.action == "buy":
+        elif decision.action == Action.BUY:
             if not decision.market_id or not decision.outcome:
                 logger.error("Buy decision missing market_id or outcome")
                 return False
@@ -524,7 +524,7 @@ class BaseAgent(ABC):
 
             return False
 
-        elif decision.action == "sell":
+        elif decision.action == Action.SELL:
             if not decision.market_id or not decision.outcome:
                 logger.error("Sell decision missing market_id or outcome")
                 return False
