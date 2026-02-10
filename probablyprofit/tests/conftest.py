@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from probablyprofit.agent.base import BaseAgent, Decision, Observation
+from probablyprofit.agent.base import Action, BaseAgent, Decision, Observation
 from probablyprofit.api.client import Market, Order, PolymarketClient, Position
 from probablyprofit.risk.manager import RiskLimits, RiskManager
 
