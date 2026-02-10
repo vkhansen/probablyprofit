@@ -13,6 +13,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from collections import deque
 from datetime import datetime
+from enum import Enum
 
 # Note: Type checking import to avoid circular dependency if needed, but BaseStrategy doesn't import BaseAgent
 from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
@@ -28,6 +29,14 @@ from probablyprofit.utils.killswitch import KillSwitchError, get_kill_switch, is
 
 if TYPE_CHECKING:
     from probablyprofit.agent.strategy import BaseStrategy
+
+
+class Action(str, Enum):
+    """Valid trading decision actions."""
+
+    HOLD = "hold"
+    BUY = "buy"
+    SELL = "sell"
 
 
 class Observation(BaseModel):
@@ -49,7 +58,7 @@ class Observation(BaseModel):
 class Decision(BaseModel):
     """Represents a trading decision."""
 
-    action: str  # "buy", "sell", "hold", "close"
+    action: Action  # "buy", "sell", "hold"
     market_id: Optional[str] = None
     outcome: Optional[str] = None
     size: float = 0.0
