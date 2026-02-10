@@ -541,6 +541,7 @@ def run(
 
         # Initialize client
         client = PolymarketClient(private_key=config.private_key)
+        await client.initialize_async()
 
         # Initialize risk manager
         risk = RiskManager(initial_capital=config.initial_capital)
@@ -809,7 +810,7 @@ def balance():
         from probablyprofit.api.client import PolymarketClient
 
         client = PolymarketClient(private_key=config.private_key)
-
+        await client.initialize_async()
         try:
             with console.status("[bold]Fetching balance...[/bold]"):
                 bal = await client.get_balance()

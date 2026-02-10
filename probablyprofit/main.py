@@ -246,8 +246,9 @@ async def main():
     # 1. Initialize Platform Client
     from probablyprofit.api.client import PolymarketClient
 
-    client = PolymarketClient()
-    await client.initialize_async(private_key=os.getenv("PRIVATE_KEY"))
+    private_key = os.getenv("PRIVATE_KEY")
+    client = PolymarketClient(private_key=private_key)
+    await client.initialize_async()
     logger.info("📊 Connected to Polymarket")
 
     # 2. Risk Manager
