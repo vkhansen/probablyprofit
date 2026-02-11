@@ -78,3 +78,35 @@ Redesign the `get_markets()` method in `probablyprofit/api/client.py` to enable 
 ### 9. Documentation
 - [ ] Update `docs/api-reference.md`: Detail new methods/params (get_tags, get_markets with tag_id).
 - [ ] Add `docs/filtering-guide.md`: Examples for 15-min crypto setup, tag resolution, and troubleshooting.
+
+## Minor Issues / Adjustments Needed
+
+Tag slug for crypto
+Check actual slug — it is often "crypto" rather than "cryptocurrency".
+Run GET /tags once and search for crypto-related entries.
+Some markets may have multiple tags (crypto + politics, etc.), so tag_id filtering is inclusive but not always exclusive.
+end_date_max vs start_date
+end_date_max works for closing soon.
+For very short markets (e.g. <15 min), also consider start_date_min (recently started) if you want to exclude very old unresolved markets.
+But your plan is fine as-is for most cases.
+
+No direct "duration" filter
+Confirmed — no native way. Your combination of end_date_max + keyword check is the best available.
+get_markets() signature
+Your proposed params are good.
+Consider also exposing active: bool = True (API supports active param too, often used with closed=false).
+Prefer /events over /markets? (optional enhancement)
+/events groups related markets (e.g. multi-outcome questions) and also supports tag_id, closed, end_date_max, etc.
+If your strategy cares about events/questions (not individual yes/no tokens), /events can be more efficient.
+But if you need every individual market/token anyway → stick with /markets.
+"15 min" patterns
+Common abbreviations in titles: "15M", "15 Min", "15-minute", "15m", sometimes "quarter-hour".
+Consider case-insensitive regex or multiple variants in whitelist.
+
+## Suggested Small Improvements / Additions
+
+Add active=True to get_markets() calls (many docs examples use active=true&closed=false).
+In config, allow tag_id directly (as fallback/override) besides slug.
+Consider optional volume_num_min or liquidity_num_min filters (API supports them) → avoid illiquid 15-min markets.
+In observe/agent logic: add a post-filter step to check market end_date is within X minutes (extra safety even with end_date_max).
+CLI: --dry-run printing the filtered list + count is very useful during development
