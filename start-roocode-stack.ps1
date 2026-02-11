@@ -70,7 +70,13 @@ if ($portInUse) {
 Write-Host "Starting Ollama serve..." -ForegroundColor Yellow
 # Start Ollama serve in the current window to see output
 Write-Host "Starting Ollama serve in this window. The script will continue after you close Ollama (Ctrl+C)..." -ForegroundColor Cyan
-ollama serve
+# Start Ollama serve in the current window to see output
+Start-Process -WindowStyle Minimized -FilePath "ollama" -ArgumentList "serve"
+
+# Fallback: If roocode can't connect, try running serve directly in a new window
+# This can help with certain networking or environment variable issues.
+Write-Host "If you see connection errors from roocode, close this window and run 'ollama serve' in a separate, dedicated terminal." -foregroundColor Cyan
+# Start-Process -NewWindow -FilePath "ollama" -ArgumentList "serve"
 
 # Wait for Ollama to be ready
 $ollamaUrl = "http://localhost:11434"
@@ -223,11 +229,26 @@ if ($portCheck) {
 # ──────────────────────────────────────────────────────────────
 
 Write-Host "Creating and starting new container..." -ForegroundColor Green
-try {
-    docker run -d --name $containerName -p 6333:6333 -p 6334:6334 -v "qdrant_storage:/qdrant/storage" qdrant/qdrant:latest
-    Write-Host "New container created and started." -ForegroundColor Green
-} catch {
-    Write-Host "Error creating container: $($_.Exception.Message)" -ForegroundColor Red
+# Add a retry loop to handle the race condition where Docker API isn't ready
+$maxRetries = 5
+$retryCount = 0
+$containerStarted = $false
+while ($retryCount -lt $maxRetries -and !$containerStarted) {
+    try {
+        docker run -d --name $containerName -p 6333:6333 -p 6334:6334 -v "qdrant_storage:/qdrant/storage" qdrant/qdrant:latest
+        Write-Host "New container created and started." -ForegroundColor Green
+        $containerStarted = $true
+    } catch {
+        $retryCount++
+        if ($retryCount -ge $maxRetries) {
+                Write-Host "Error creating container after $maxRetries retries: $($_.Exception.Message)" -ForegroundColor Red
+                Pause
+                exit
+        } else {
+            Write-Host "Attempt $retryCount failed. Retrying in 5 seconds... Error: $($_.Exception.Message)" -ForegroundColor Yellow
+            Start-Sleep -Seconds 5
+        }
+    }
 }
 
 # Wait for Qdrant to be ready
