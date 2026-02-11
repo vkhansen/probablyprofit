@@ -198,10 +198,9 @@ async def batch_fetch(
     results: List[T] = []
 
     for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+        batch = items[i : i + batch_size]
         batch_results = await gather_with_concurrency(
-            concurrency,
-            *(fetch_fn(item) for item in batch)
+            concurrency, *(fetch_fn(item) for item in batch)
         )
         results.extend(batch_results)
 
@@ -310,6 +309,7 @@ class PolymarketClient:
         # SECURITY: Always verify SSL certificates by default
         # Set POLYMARKET_VERIFY_SSL=false only for debugging (never in production)
         import os
+
         verify_ssl = os.getenv("POLYMARKET_VERIFY_SSL", "true").lower() != "false"
 
         if not verify_ssl:
@@ -711,8 +711,7 @@ class PolymarketClient:
         # Batch fetch uncached markets
         if uncached_ids:
             fetched = await gather_with_concurrency(
-                concurrency,
-                *(self.get_market(cid) for cid in uncached_ids)
+                concurrency, *(self.get_market(cid) for cid in uncached_ids)
             )
             for cid, market in zip(uncached_ids, fetched):
                 results[cid] = market
@@ -741,8 +740,7 @@ class PolymarketClient:
             return []
 
         return await gather_with_concurrency(
-            concurrency,
-            *(self.get_orderbook(cid, outcome) for cid, outcome in market_outcomes)
+            concurrency, *(self.get_orderbook(cid, outcome) for cid, outcome in market_outcomes)
         )
 
     async def refresh_market_prices_batch(
@@ -764,11 +762,7 @@ class PolymarketClient:
         """
         markets = await self.get_markets_batch(condition_ids, concurrency)
 
-        return {
-            m.condition_id: m.outcome_prices
-            for m in markets
-            if m is not None
-        }
+        return {m.condition_id: m.outcome_prices for m in markets if m is not None}
 
     async def place_order(
         self,
@@ -851,7 +845,9 @@ class PolymarketClient:
                                     token_id = clob_ids[idx]
                                     # Cache for future orders
                                     self._token_id_cache.set(cache_key, token_id)
-                                    logger.debug(f"Resolved and cached outcome '{outcome}' to token ID {token_id}")
+                                    logger.debug(
+                                        f"Resolved and cached outcome '{outcome}' to token ID {token_id}"
+                                    )
                         except ValueError:
                             # Outcome name not found in list, assume it might be valid or fail later
                             pass

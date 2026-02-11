@@ -11,3 +11,6 @@ anthropic
 py-clob-client
 openai
 pandas
+black
+isort
+mypy

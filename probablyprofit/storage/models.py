@@ -117,9 +117,7 @@ class PositionSnapshot(SQLModel, table=True):
 
     # PERFORMANCE OPTIMIZATION: Composite index for position history queries
     # - (market_id, timestamp): Position history for specific market
-    __table_args__ = (
-        Index("ix_position_snapshots_market_timestamp", "market_id", "timestamp"),
-    )
+    __table_args__ = (Index("ix_position_snapshots_market_timestamp", "market_id", "timestamp"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)

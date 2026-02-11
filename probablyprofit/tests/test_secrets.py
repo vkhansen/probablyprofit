@@ -27,7 +27,10 @@ class TestSecretsManager:
         from probablyprofit.utils.secrets import SecretsManager
 
         # Clear any env vars
-        with patch.dict(os.environ, {}, clear=True), patch("pathlib.Path.home", return_value="/fake/home"):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("pathlib.Path.home", return_value="/fake/home"),
+        ):
             manager = SecretsManager()
             manager._cache.clear()
             result = manager.get("nonexistent_key")

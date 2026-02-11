@@ -141,7 +141,7 @@ class AnthropicAgent(BaseAgent):
             # Use unified validation utility
             try:
                 decision = validate_and_parse_decision(response, Decision)
-                
+
                 # Additional clamping if needed
                 if decision.confidence < 0 or decision.confidence > 1:
                     logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
@@ -151,18 +151,18 @@ class AnthropicAgent(BaseAgent):
                     if decision.price < 0 or decision.price > 1:
                         logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
                         decision.price = max(0.0, min(1.0, decision.price))
-                
+
                 return decision
 
             except SchemaValidationError as e:
                 # If strict JSON parsing fails, attempt natural language fallback
                 # BUT only if it really doesn't look like JSON
                 if "{" in response and "}" in response:
-                     # It tried to be JSON but failed schema - re-raise to trigger retry
-                     raise e
-                
+                    # It tried to be JSON but failed schema - re-raise to trigger retry
+                    raise e
+
                 logger.info("Response doesn't look like JSON, attempting natural language fallback")
-                
+
                 # Parse from natural language response
                 response_lower = response.lower()
 
@@ -304,9 +304,9 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
             return decision
 
         except SchemaValidationError as e:
-             # Retry decorator will catch this
-             logger.warning(f"Schema validation failed (will retry): {e}")
-             raise
+            # Retry decorator will catch this
+            logger.warning(f"Schema validation failed (will retry): {e}")
+            raise
         except AgentException:
             # Re-raise agent exceptions (already logged)
             raise

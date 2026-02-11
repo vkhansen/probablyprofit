@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-
 # Type alias for array-like data
 ArrayLike = Union[np.ndarray, pd.Series, List[float]]
 
@@ -192,7 +191,7 @@ class PerformanceMetrics:
         cumulative_max = np.maximum.accumulate(equity)
 
         # Avoid division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             drawdown = (equity - cumulative_max) / cumulative_max
             drawdown = np.nan_to_num(drawdown, nan=0.0)
 

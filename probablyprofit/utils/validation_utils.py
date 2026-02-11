@@ -31,14 +31,11 @@ def clean_json_string(text: str) -> str:
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
         if match:
             return match.group(1).strip()
-    
+
     return text.strip()
 
 
-def validate_and_parse_decision(
-    response_text: str,
-    model_class: Type[T] = Decision
-) -> T:
+def validate_and_parse_decision(response_text: str, model_class: Type[T] = Decision) -> T:
     """
     Validate and parse a JSON response into a Pydantic model.
 
@@ -56,7 +53,7 @@ def validate_and_parse_decision(
         # Clean markdown formatting
         cleaned_text = clean_json_string(response_text)
         data = None
-        
+
         # Parse JSON
         try:
             data = json.loads(cleaned_text)
@@ -69,7 +66,7 @@ def validate_and_parse_decision(
                     data = json.loads(match.group(1))
                 except json.JSONDecodeError as inner_e:
                     raise SchemaValidationError(f"Invalid JSON format: {e}") from inner_e
-            
+
             if data is None:
                 raise SchemaValidationError(f"Invalid JSON format: {e}") from e
 
@@ -91,11 +88,11 @@ def validate_and_parse_decision(
             loc = ".".join(str(x) for x in err["loc"])
             msg = err["msg"]
             error_msgs.append(f"{loc}: {msg}")
-        
+
         error_str = "; ".join(error_msgs)
         logger.warning(f"Schema validation failed: {error_str}")
         raise SchemaValidationError(f"Schema validation failed: {error_str}")
-    
+
     except Exception as e:
         if isinstance(e, SchemaValidationError):
             raise

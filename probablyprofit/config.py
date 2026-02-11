@@ -473,8 +473,8 @@ def load_config() -> Config:
 
     # Try to use secure secrets manager (keyring/encrypted storage)
     try:
-        from probablyprofit.utils.secrets import get_secrets_manager
         from probablyprofit.utils.logging import register_secret
+        from probablyprofit.utils.secrets import get_secrets_manager
 
         secrets = get_secrets_manager()
 

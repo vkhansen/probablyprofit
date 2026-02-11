@@ -190,9 +190,11 @@ Respond with a JSON object with this schema:
                 if decision.price < 0 or decision.price > 1:
                     logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
                     decision.price = max(0.0, min(1.0, decision.price))
-            
+
             if not decision.market_id or not decision.outcome:
-                logger.warning(f"Gemini failed to provide market_id or outcome, holding. Decision: {decision.model_dump_json()}")
+                logger.warning(
+                    f"Gemini failed to provide market_id or outcome, holding. Decision: {decision.model_dump_json()}"
+                )
                 decision.action = "hold"
 
             return decision

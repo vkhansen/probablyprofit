@@ -10,6 +10,13 @@ from typing import Any, Optional
 
 from loguru import logger
 from openai import OpenAI
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
@@ -21,7 +28,6 @@ from probablyprofit.api.exceptions import (
     ValidationException,
 )
 from probablyprofit.risk.manager import RiskManager
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
 from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
     validate_confidence,

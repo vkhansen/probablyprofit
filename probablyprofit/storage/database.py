@@ -118,10 +118,11 @@ class DatabaseManager:
         """Redact sensitive parts of database URL for logging."""
         # Redact any password or key in the URL
         import re
+
         # Redact password in standard URLs
-        url = re.sub(r'://[^:]+:([^@]+)@', r'://***:***@', url)
+        url = re.sub(r"://[^:]+:([^@]+)@", r"://***:***@", url)
         # Redact encryption keys
-        url = re.sub(r'key=[^&\s]+', 'key=***', url)
+        url = re.sub(r"key=[^&\s]+", "key=***", url)
         return url
 
     async def create_tables(self):
