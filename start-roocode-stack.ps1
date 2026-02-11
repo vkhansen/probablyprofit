@@ -68,7 +68,9 @@ if ($portInUse) {
 }
 
 Write-Host "Starting Ollama serve..." -ForegroundColor Yellow
-Start-Process -FilePath "ollama" -ArgumentList "serve"
+# Start Ollama serve in the current window to see output
+Write-Host "Starting Ollama serve in this window. The script will continue after you close Ollama (Ctrl+C)..." -ForegroundColor Cyan
+ollama serve
 
 # Wait for Ollama to be ready
 $ollamaUrl = "http://localhost:11434"
