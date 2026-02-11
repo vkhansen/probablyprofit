@@ -27,6 +27,7 @@ async def store():
     yield store
 
     # Cleanup
+    await store.close()
     os.unlink(db_path)
 
 

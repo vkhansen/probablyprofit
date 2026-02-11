@@ -1,3 +1,4 @@
+from datetime import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from probablyprofit.agent.openai_agent import OpenAIAgent
@@ -31,7 +32,7 @@ async def test_openai_agent_retry_on_schema_error():
     with patch.object(agent.openai.chat.completions, "create", side_effect=[invalid_response, valid_response]) as mock_create:
         
         observation = MagicMock()
-        observation.timestamp = "2024-01-01"
+        observation.timestamp = datetime.fromisoformat("2024-01-01")
         observation.markets = []
         observation.positions = []
         observation.balance = 1000.0

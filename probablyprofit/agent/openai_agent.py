@@ -216,9 +216,9 @@ Output schema:
 
             return decision
 
-        except SchemaValidationError as e:
+        except SchemaValidationError:
             # Re-raise SchemaValidationError to trigger retry
-            logger.warning(f"Schema validation failed (will retry): {e}")
+            logger.warning(f"Schema validation failed, will retry...")
             raise
         except Exception as e:
             logger.error(f"Error getting decision from OpenAI: {e}")

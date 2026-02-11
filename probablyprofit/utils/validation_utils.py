@@ -55,6 +55,7 @@ def validate_and_parse_decision(
     try:
         # Clean markdown formatting
         cleaned_text = clean_json_string(response_text)
+        data = None
         
         # Parse JSON
         try:
@@ -66,10 +67,11 @@ def validate_and_parse_decision(
             if match:
                 try:
                     data = json.loads(match.group(1))
-                except json.JSONDecodeError:
-                    raise SchemaValidationError(f"Invalid JSON format: {e}")
-            else:
-                raise SchemaValidationError(f"Invalid JSON format: {e}")
+                except json.JSONDecodeError as inner_e:
+                    raise SchemaValidationError(f"Invalid JSON format: {e}") from inner_e
+            
+            if data is None:
+                raise SchemaValidationError(f"Invalid JSON format: {e}") from e
 
         # Handle case where LLM returns an array of decisions - take the first one
         if isinstance(data, list):

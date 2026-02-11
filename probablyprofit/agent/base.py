@@ -448,7 +448,9 @@ class BaseAgent(ABC):
 
         elif decision.action == Action.BUY:
             if not decision.market_id or not decision.outcome:
-                logger.error("Buy decision missing market_id or outcome")
+                logger.error(
+                    f"Buy decision missing market_id or outcome. Decision: {decision.model_dump_json()}"
+                )
                 return False
 
             # Get readable market name
@@ -484,7 +486,7 @@ class BaseAgent(ABC):
             # Dry run check
             if self.dry_run:
                 logger.info(
-                    f"[{self.name}] 🧪 DRY RUN: Would BUY ${decision.size:.2f} of '{decision.outcome}' @ {decision.price:.2f}"
+                    f"[{self.name}] 🧪 DRY RUN: Would BUY ${decision.size:.2f} of '{decision.outcome}' @ {decision.price or 0.0:.2f}"
                 )
                 logger.info(f"[{self.name}] 📊 Market: {market_name}")
                 # Track position even in dry run
@@ -505,7 +507,7 @@ class BaseAgent(ABC):
                 self.risk_manager.record_trade(order.size, order.price)
                 self._record_position(decision.market_id, decision.outcome)
                 logger.info(
-                    f"[{self.name}] ✅ BUY order placed: ${decision.size:.2f} on '{market_name}'"
+                    f"[{self.name}] ✅ BUY order placed: ${decision.size or 0.0:.2f} on '{market_name}'"
                 )
                 # Send trade alert
                 try:
@@ -526,7 +528,9 @@ class BaseAgent(ABC):
 
         elif decision.action == Action.SELL:
             if not decision.market_id or not decision.outcome:
-                logger.error("Sell decision missing market_id or outcome")
+                logger.error(
+                    f"Sell decision missing market_id or outcome. Decision: {decision.model_dump_json()}"
+                )
                 return False
 
             # Get readable market name
@@ -535,7 +539,7 @@ class BaseAgent(ABC):
             # Dry run check
             if self.dry_run:
                 logger.info(
-                    f"[{self.name}] 🧪 DRY RUN: Would SELL ${decision.size:.2f} of '{decision.outcome}' @ {decision.price:.2f}"
+                    f"[{self.name}] 🧪 DRY RUN: Would SELL ${decision.size:.2f} of '{decision.outcome}' @ {decision.price or 0.0:.2f}"
                 )
                 logger.info(f"[{self.name}] 📊 Market: {market_name}")
                 # Remove from tracked positions
@@ -559,7 +563,7 @@ class BaseAgent(ABC):
                 key = f"{decision.market_id}:{decision.outcome}"
                 self._open_positions.discard(key)
                 logger.info(
-                    f"[{self.name}] ✅ SELL order placed: ${decision.size:.2f} on '{market_name}'"
+                    f"[{self.name}] ✅ SELL order placed: ${decision.size or 0.0:.2f} on '{market_name}'"
                 )
                 # Send trade alert
                 try:

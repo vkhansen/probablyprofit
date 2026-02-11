@@ -216,6 +216,12 @@ class HistoricalDataStore:
 
         logger.info(f"HistoricalDataStore initialized (path: {db_path}, pool_size: {pool_size})")
 
+    async def close(self):
+        """Close the connection pool."""
+        if self._pool:
+            await self._pool.close()
+            logger.info("HistoricalDataStore connection pool closed.")
+
     async def initialize(self) -> None:
         """Initialize database schema and connection pool."""
         # Initialize the connection pool first
