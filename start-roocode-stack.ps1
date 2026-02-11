@@ -68,7 +68,7 @@ if ($portInUse) {
 }
 
 Write-Host "Starting Ollama serve..." -ForegroundColor Yellow
-Start-Process ollama -ArgumentList "serve" -WindowStyle Hidden -PassThru | Out-Null
+Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
 
 # Wait for Ollama to be ready
 $ollamaUrl = "http://localhost:11434"
@@ -222,10 +222,7 @@ if ($portCheck) {
 
 Write-Host "Creating and starting new container..." -ForegroundColor Green
 try {
-    docker run -d --name $containerName `
-      -p 6333:6333 -p 6334:6334 `
-      -v qdrant_storage:/qdrant/storage `
-      qdrant/qdrant:latest
+    docker run -d --name $containerName -p 6333:6333 -p 6334:6334 -v "qdrant_storage:/qdrant/storage" qdrant/qdrant:latest
     Write-Host "New container created and started." -ForegroundColor Green
 } catch {
     Write-Host "Error creating container: $($_.Exception.Message)" -ForegroundColor Red
