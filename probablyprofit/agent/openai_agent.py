@@ -21,7 +21,7 @@ from probablyprofit.api.exceptions import (
     ValidationException,
 )
 from probablyprofit.risk.manager import RiskManager
-from probablyprofit.utils.resilience import retry
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
 from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
     validate_confidence,
@@ -72,14 +72,14 @@ class OpenAIAgent(BaseAgent):
         logger.info(f"OpenAIAgent '{name}' initialized with model {model}")
 
     @retry(
-        max_attempts=3,
-        base_delay=2.0,
-        max_delay=30.0,
-        retryable_exceptions=(
-            ConnectionError,
-            TimeoutError,
-            NetworkException,
-            SchemaValidationError,
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(
+            (
+                ConnectionError,
+                TimeoutError,
+                NetworkException,
+            )
         ),
     )
     async def _call_openai_api(self, api_kwargs: dict) -> str:
@@ -130,6 +130,12 @@ class OpenAIAgent(BaseAgent):
             observation, self.memory, include_history=5, max_markets=20
         )
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(SchemaValidationError),
+        before_sleep=before_sleep_log(logger, "WARNING"),
+    )
     async def decide(self, observation: Observation) -> Decision:
         """
         Use GPT-4 or o1 to make a trading decision with validation.
@@ -219,6 +225,9 @@ Output schema:
         except SchemaValidationError:
             # Re-raise SchemaValidationError to trigger retry
             logger.warning(f"Schema validation failed, will retry...")
+            raise
+        except AgentException:
+            # Re-raise AgentException to propagate it up
             raise
         except Exception as e:
             logger.error(f"Error getting decision from OpenAI: {e}")
