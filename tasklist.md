@@ -1,63 +1,80 @@
-# API Enhancement: Category/Search Support for Polymarket Markets
+# API Enhancement: Reliable Filtering for Polymarket Markets via Gamma API
 
 ## Overview
-Extend the `get_markets()` method in `probablyprofit/api/client.py` to support category and search filtering via Polymarket Gamma API parameters. Add whitelist/blacklist keyword filtering loaded from `.env` variables for client-side filtering.
+Redesign the `get_markets()` method in `probablyprofit/api/client.py` to enable efficient filtering of Polymarket markets, focusing on server-side support for categories via tags and client-side keyword filtering for specifics like "15 min" durations. This ensures reliable targeting of active 15-minute crypto markets by leveraging actual Gamma API parameters (e.g., `tag_id` for crypto) and post-fetch keyword checks. Load filters from `.env` for flexibility, with fallbacks for unsupported features.
 
 ## Tasks
 
-### 1. Research Polymarket Gamma API Parameters
-- [ ] Investigate supported query parameters for `/markets` endpoint (e.g., `category`, `search`, `tags`)
-- [ ] Check if API supports category-based filtering (e.g., `category=crypto`)
-- [ ] Document available filters in code comments
+### 1. Research Polymarket Gamma API Endpoints
+- [ ] Review `/markets`, `/tags`, and `/events` endpoints for filtering options (e.g., `tag_id`, `closed`, `end_date_min/max`).
+- [ ] Confirm tag-based filtering for categories (e.g., resolve "cryptocurrency" tag slug to ID for crypto markets).
+- [ ] Identify patterns in market titles for client-side "15 min" filtering (e.g., "15M" in questions).
+- [ ] Document supported params and limitations in code comments (e.g., no native `search` or `category` params).
 
 ### 2. Update Configuration (.env Support)
 - [ ] Add new config fields in `probablyprofit/config.py`:
-  - `market_whitelist_keywords`: List of keywords to include (e.g., "15M", "crypto")
-  - `market_blacklist_keywords`: List of keywords to exclude
-  - `market_category`: Optional category filter (e.g., "crypto")
-  - `market_search`: Optional search term
-- [ ] Load these from `.env` file with defaults
+  - `market_whitelist_keywords`: Comma-separated keywords to include (e.g., "15M,15 min,BTC,ETH").
+  - `market_blacklist_keywords`: Comma-separated keywords to exclude (e.g., "daily,weekly").
+  - `market_tag_slug`: Optional tag slug for server-side filtering (e.g., "cryptocurrency").
+  - `market_duration_max_minutes`: Optional max duration for markets (e.g., 15 for short-term filtering via dates).
+- [ ] Load from `.env` with defaults (e.g., tag_slug="cryptocurrency", whitelist="15M").
 
-### 3. Extend get_markets() Method
-- [ ] Modify `get_markets()` signature to accept new params:
+### 3. Add get_tags() Method
+- [ ] Implement new async method in `probablyprofit/api/client.py`:
+  ```python
+  async def get_tags(
+      self,
+      limit: int = 100,
+      offset: int = 0,
+  ) -> List[Dict[str, Any]]:
+  ```
+- [ ] Use `_get_with_retry("/tags")` to fetch tags.
+- [ ] Add caching or optional refresh param to avoid repeated calls.
+
+### 4. Extend get_markets() Method
+- [ ] Update signature to use supported params:
   ```python
   async def get_markets(
       self,
-      active: bool = True,
+      closed: bool = False,  # False for active markets
       limit: int = 100,
       offset: int = 0,
-      category: Optional[str] = None,
-      search: Optional[str] = None,
+      tag_id: Optional[int] = None,
+      end_date_max: Optional[str] = None,  # ISO datetime for max end date
   ) -> List[Market]:
   ```
-- [ ] Update `_get_markets_with_retry()` to pass category/search to API params
-- [ ] Add client-side whitelist/blacklist filtering after API response
+- [ ] In `_get_markets_with_retry()`, pass valid API params (closed, limit, offset, tag_id, end_date_max).
+- [ ] Pre-fetch logic: If tag_slug provided (from config), call `get_tags()` to resolve to tag_id; fallback to keyword if not found.
+- [ ] Post-fetch: Apply client-side filtering – keep markets where `question` matches any whitelist keyword and none from blacklist.
+- [ ] Handle full pagination: Loop fetches with increasing offset until no more results.
 
-### 4. Update Base Agent Observe Logic
-- [ ] Modify `observe()` in `probablyprofit/agent/base.py` to use config values:
+### 5. Update Base Agent Observe Logic
+- [ ] In `probablyprofit/agent/base.py`, modify `observe()` to load config and resolve filters:
   ```python
+  tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)  # Helper to get_tags() and map
   markets = await self.client.get_markets(
-      active=True,
+      closed=False,
       limit=cfg.api.market_fetch_limit,
-      category=cfg.api.market_category,
-      search=cfg.api.market_search,
+      tag_id=tag_id,
+      end_date_max=calculate_max_end_date(cfg.api.market_duration_max_minutes),  # Helper for now + duration
   )
   ```
-- [ ] Apply whitelist/blacklist filtering if configured
+- [ ] Integrate whitelist/blacklist directly in observe() or via get_markets().
 
-### 5. Update Strategy Classes
-- [ ] Ensure `CustomStrategy` respects new config filters
-- [ ] Add `CategoryStrategy` class for category-based trading
+### 6. Update Strategy Classes
+- [ ] Modify `CustomStrategy` to use filtered markets from config (e.g., tag_slug and keywords).
+- [ ] Add `ShortTermCryptoStrategy` class: Extends base with hardcoded tag_slug="cryptocurrency" and whitelist="15M".
 
-### 6. CLI Integration
-- [ ] Add CLI options in `probablyprofit/cli/main.py` for category/search overrides
-- [ ] Update help text and examples
+### 7. CLI Integration
+- [ ] In `probablyprofit/cli/main.py`, add options for overrides (e.g., --tag-slug, --whitelist, --duration-max).
+- [ ] Update help: Include examples like "Target 15-min crypto: --tag-slug cryptocurrency --whitelist '15M,BTC'".
+- [ ] Add dry-run flag to print filtered markets without trading.
 
-### 7. Testing
-- [ ] Add unit tests for new filtering logic
-- [ ] Test with real API calls (dry-run mode)
-- [ ] Verify whitelist/blacklist works with sample markets
+### 8. Testing
+- [ ] Write unit tests: Mock API responses for /tags and /markets; test tag resolution and keyword filtering.
+- [ ] Integration tests: Real API calls in dry-run; verify only active crypto markets with "15M" are returned.
+- [ ] Edge cases: Invalid tag_slug fallback, no matches, pagination over 100 markets.
 
-### 8. Documentation
-- [ ] Update `docs/api-reference.md` with new get_markets params
-- [ ] Add examples in `docs/strategy-guide.md` for category targeting
+### 9. Documentation
+- [ ] Update `docs/api-reference.md`: Detail new methods/params (get_tags, get_markets with tag_id).
+- [ ] Add `docs/filtering-guide.md`: Examples for 15-min crypto setup, tag resolution, and troubleshooting.
