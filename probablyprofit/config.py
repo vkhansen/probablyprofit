@@ -272,6 +272,10 @@ class Config:
                 "rate_limit_period": self.api.polymarket_rate_limit_period,
                 "circuit_breaker_threshold": self.api.circuit_breaker_threshold,
                 "retry_max_attempts": self.api.retry_max_attempts,
+                "market_whitelist_keywords": self.api.market_whitelist_keywords,
+                "market_blacklist_keywords": self.api.market_blacklist_keywords,
+                "market_tag_slug": self.api.market_tag_slug,
+                "market_duration_max_minutes": self.api.market_duration_max_minutes,
             },
             "agent": {
                 "loop_interval": self.agent.default_loop_interval,
