@@ -1,18 +1,21 @@
 """
 Tests for market filtering functionality.
 """
-import pytest
+
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
-from probablyprofit.api.client import PolymarketClient
-from datetime import datetime
-from probablyprofit.config import get_config, APIConfig
-from probablyprofit.agent.base import BaseAgent, Decision, Action
-from probablyprofit.api.client import Market
+import pytest
+
+from probablyprofit.agent.base import Action, BaseAgent, Decision
+from probablyprofit.api.client import Market, PolymarketClient
+from probablyprofit.config import APIConfig, get_config
+
 
 class MockRiskManager:
     def can_open_position(self, size, price):
         return True
+
 
 @pytest.fixture
 def mock_client():
@@ -22,10 +25,13 @@ def mock_client():
     client.get_tags = AsyncMock(return_value=[])
     return client
 
+
 class ConcreteTestAgent(BaseAgent):
     """A concrete implementation of BaseAgent for testing."""
+
     async def decide(self, observation) -> Decision:
         return Decision(action=Action.HOLD, reasoning="Test decision")
+
 
 @pytest.fixture
 def mock_agent(mock_client):
@@ -33,6 +39,7 @@ def mock_agent(mock_client):
     risk_manager = MockRiskManager()
     agent = ConcreteTestAgent(client=mock_client, risk_manager=risk_manager, name="TestAgent")
     return agent
+
 
 @pytest.mark.asyncio
 async def test_tag_resolution(mock_agent):
@@ -47,6 +54,7 @@ async def test_tag_resolution(mock_agent):
 
     tag_id_none = await mock_agent._resolve_tag_id("non-existent-tag")
     assert tag_id_none is None
+
 
 @pytest.mark.asyncio
 async def test_observe_with_filters(mock_agent):
@@ -64,16 +72,47 @@ async def test_observe_with_filters(mock_agent):
 
     # Mock markets
     markets = [
-        Market(condition_id="1", question="BTC to hit $100k in 15M?", end_date=datetime.now(), outcomes=["Yes", "No"], outcome_prices=[0.5, 0.5], volume=1000, liquidity=1000),
-        Market(condition_id="2", question="ETH daily price movement", end_date=datetime.now(), outcomes=["Yes", "No"], outcome_prices=[0.5, 0.5], volume=1000, liquidity=1000),
-        Market(condition_id="3", question="SOL to rally in 15M?", end_date=datetime.now(), outcomes=["Yes", "No"], outcome_prices=[0.5, 0.5], volume=1000, liquidity=1000),
-        Market(condition_id="4", question="XRP price in 1 hour", end_date=datetime.now(), outcomes=["Yes", "No"], outcome_prices=[0.5, 0.5], volume=1000, liquidity=1000),
+        Market(
+            condition_id="1",
+            question="BTC to hit $100k in 15M?",
+            end_date=datetime.now(),
+            outcomes=["Yes", "No"],
+            outcome_prices=[0.5, 0.5],
+            volume=1000,
+            liquidity=1000,
+        ),
+        Market(
+            condition_id="2",
+            question="ETH daily price movement",
+            end_date=datetime.now(),
+            outcomes=["Yes", "No"],
+            outcome_prices=[0.5, 0.5],
+            volume=1000,
+            liquidity=1000,
+        ),
+        Market(
+            condition_id="3",
+            question="SOL to rally in 15M?",
+            end_date=datetime.now(),
+            outcomes=["Yes", "No"],
+            outcome_prices=[0.5, 0.5],
+            volume=1000,
+            liquidity=1000,
+        ),
+        Market(
+            condition_id="4",
+            question="XRP price in 1 hour",
+            end_date=datetime.now(),
+            outcomes=["Yes", "No"],
+            outcome_prices=[0.5, 0.5],
+            volume=1000,
+            liquidity=1000,
+        ),
     ]
     mock_agent.client.get_markets.return_value = markets
 
     # Mock agent._resolve_tag_id to return a value
     mock_agent._resolve_tag_id = AsyncMock(return_value=1)
-
 
     observation = await mock_agent.observe()
 

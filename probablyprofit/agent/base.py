@@ -413,7 +413,9 @@ class BaseAgent(ABC):
             markets = [
                 m
                 for m in markets
-                if not any(k.lower() in m.question.lower() for k in cfg.api.market_blacklist_keywords)
+                if not any(
+                    k.lower() in m.question.lower() for k in cfg.api.market_blacklist_keywords
+                )
             ]
 
         # Cache market names for better logging

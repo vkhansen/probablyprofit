@@ -592,12 +592,10 @@ def load_config() -> Config:
         try:
             config.api.market_tag_id = int(os.getenv("MARKET_TAG_ID"))
         except (ValueError, TypeError):
-            pass # Keep default if invalid
+            pass  # Keep default if invalid
     if os.getenv("MARKET_DURATION_MAX_MINUTES"):
         try:
-            config.api.market_duration_max_minutes = int(
-                os.getenv("MARKET_DURATION_MAX_MINUTES")
-            )
+            config.api.market_duration_max_minutes = int(os.getenv("MARKET_DURATION_MAX_MINUTES"))
         except (ValueError, TypeError):
             pass  # Keep default if invalid
 
