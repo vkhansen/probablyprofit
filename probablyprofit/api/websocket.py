@@ -34,7 +34,7 @@ class ConnectionState(Enum):
 try:
     import websockets
     import websockets.exceptions
-    from websockets.client import WebSocketClientProtocol
+    from websockets import ClientProtocol
 
     WEBSOCKETS_AVAILABLE = True
 except ImportError:
@@ -114,7 +114,7 @@ class WebSocketClient:
         self.reconnect_interval = reconnect_interval
         self.max_reconnect_attempts = max_reconnect_attempts
 
-        self._ws: Optional[WebSocketClientProtocol] = None
+        self._ws: Optional[ClientProtocol] = None
         self._subscriptions: Set[str] = set()
         self._running = False
         self._task: Optional[asyncio.Task] = None
