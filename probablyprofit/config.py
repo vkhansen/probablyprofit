@@ -72,6 +72,7 @@ class APIConfig:
     market_whitelist_keywords: List[str] = field(default_factory=list)
     market_blacklist_keywords: List[str] = field(default_factory=list)
     market_tag_slug: Optional[str] = None
+    market_tag_id: Optional[int] = None
     market_duration_max_minutes: Optional[int] = None
 
 
@@ -267,6 +268,7 @@ class Config:
                 "market_whitelist_keywords": self.api.market_whitelist_keywords,
                 "market_blacklist_keywords": self.api.market_blacklist_keywords,
                 "market_tag_slug": self.api.market_tag_slug,
+                "market_tag_id": self.api.market_tag_id,
                 "market_duration_max_minutes": self.api.market_duration_max_minutes,
             },
             "agent": {
@@ -457,6 +459,7 @@ def load_config() -> Config:
                 "market_blacklist_keywords", config.api.market_blacklist_keywords
             )
             config.api.market_tag_slug = api.get("market_tag_slug", config.api.market_tag_slug)
+            config.api.market_tag_id = api.get("market_tag_id", config.api.market_tag_id)
             config.api.market_duration_max_minutes = api.get(
                 "market_duration_max_minutes", config.api.market_duration_max_minutes
             )
@@ -585,6 +588,11 @@ def load_config() -> Config:
         ]
     if os.getenv("MARKET_TAG_SLUG"):
         config.api.market_tag_slug = os.getenv("MARKET_TAG_SLUG")
+    if os.getenv("MARKET_TAG_ID"):
+        try:
+            config.api.market_tag_id = int(os.getenv("MARKET_TAG_ID"))
+        except (ValueError, TypeError):
+            pass # Keep default if invalid
     if os.getenv("MARKET_DURATION_MAX_MINUTES"):
         try:
             config.api.market_duration_max_minutes = int(

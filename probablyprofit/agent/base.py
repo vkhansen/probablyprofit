@@ -385,8 +385,10 @@ class BaseAgent(ABC):
 
         cfg = get_config()
 
-        # Resolve tag_id from slug
-        tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)
+        # Resolve tag_id from slug or use directly from config
+        tag_id = cfg.api.market_tag_id
+        if not tag_id and cfg.api.market_tag_slug:
+            tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)
 
         # Calculate max end date
         end_date_max = self._calculate_max_end_date(cfg.api.market_duration_max_minutes)
@@ -394,7 +396,8 @@ class BaseAgent(ABC):
         # Fetch markets with new filters
         markets = await self.client.get_markets(
             closed=False,
-            limit=100,  # Use a reasonable default limit
+            active=True,
+            limit=100,
             tag_id=tag_id,
             end_date_max=end_date_max,
         )

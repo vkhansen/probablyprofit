@@ -422,7 +422,7 @@ class TestFullTradeFlow:
             return_value=[
                 Market(
                     condition_id="test_market_123",
-                    question="Will it rain tomorrow?",
+                    question="btc-updown-5m Will it rain tomorrow?",
                     description="Test market",
                     end_date=datetime.now(),
                     outcomes=["Yes", "No"],
@@ -436,6 +436,7 @@ class TestFullTradeFlow:
         mock_client.get_positions = AsyncMock(return_value=[])
         mock_client.get_balance = AsyncMock(return_value=1000.0)
         mock_client.place_order = AsyncMock(return_value=None)
+        mock_client.get_tags = AsyncMock(return_value=[{"slug": "crypto", "id": 123}])
 
         risk_manager = RiskManager(initial_capital=1000.0)
 
@@ -479,7 +480,7 @@ class TestFullTradeFlow:
 
         mock_market = Market(
             condition_id="buy_test_market",
-            question="Test buy market",
+            question="btc-updown-5m Test buy market",
             description="",
             end_date=datetime.now(),
             outcomes=["Yes", "No"],
@@ -494,6 +495,7 @@ class TestFullTradeFlow:
         mock_client.get_positions = AsyncMock(return_value=[])
         mock_client.get_balance = AsyncMock(return_value=1000.0)
         mock_client.place_order = AsyncMock(return_value=None)
+        mock_client.get_tags = AsyncMock(return_value=[{"slug": "crypto", "id": 123}])
 
         risk_manager = RiskManager(initial_capital=1000.0)
 

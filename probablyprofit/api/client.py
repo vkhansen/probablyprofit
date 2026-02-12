@@ -426,6 +426,7 @@ class PolymarketClient:
     async def get_markets(
         self,
         closed: bool = False,
+        active: bool = True,
         limit: int = 100,
         offset: int = 0,
         tag_id: Optional[int] = None,
@@ -476,6 +477,7 @@ class PolymarketClient:
                 "/markets",
                 params={
                     "closed": str(closed).lower(),
+                    "active": str(active).lower(),
                     "limit": limit,
                     "offset": offset,
                     "tag_id": tag_id,
