@@ -31,36 +31,7 @@ Write-Host "Targeting virtual environment python at $venvPython"
 Write-Host "Upgrading pip..."
 & $venvPython -m pip install --upgrade pip
 
-# Check for Git
-try {
-    git --version | Out-Null
-} catch {
-    Write-Error "Git is not installed or not in PATH. Required for pulling source."
-    exit 1
-}
 
-# Pull/Clone probablyprofit source
-$repoUrl = "https://github.com/randomness11/probablyprofit.git"
-$sourceDir = "probablyprofit-source"
-
-if (Test-Path $sourceDir) {
-    Write-Host "Updating probablyprofit source in $sourceDir..."
-    Push-Location $sourceDir
-    try {
-        git pull
-    } catch {
-        Write-Warning "Failed to pull updates. You might have local changes or network issues."
-    }
-    Pop-Location
-} else {
-    Write-Host "Cloning probablyprofit from $repoUrl into $sourceDir..."
-    try {
-        git clone $repoUrl $sourceDir
-    } catch {
-        Write-Error "Failed to clone repository."
-        exit 1
-    }
-}
 
 # Install dependencies
 Write-Host "Installing dependencies..."
