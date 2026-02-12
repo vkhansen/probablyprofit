@@ -24,6 +24,12 @@ import os
 import sys
 from pathlib import Path
 
+import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
+
 # Ensure package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -45,12 +51,6 @@ logger.add(
 # Also suppress other loggers
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-import click
-from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
-from rich.table import Table
 
 from probablyprofit.config import (
     Config,
@@ -127,7 +127,7 @@ def cli(ctx, verbose):
         else:
             # Show status and quick start
             agents = config.get_available_agents()
-            best = config.get_best_agent()
+            config.get_best_agent()
 
             console.print(f"[green]✓[/green] Configured with: [bold]{', '.join(agents)}[/bold]")
             if config.has_wallet():
@@ -498,10 +498,7 @@ def run(
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Live trading started\n")
 
     # Determine agent
-    if agent == "auto":
-        selected_agent = config.get_best_agent()
-    else:
-        selected_agent = agent
+    selected_agent = config.get_best_agent() if agent == "auto" else agent
 
     if not selected_agent:
         console.print("[red]No AI provider available.[/red]")
@@ -530,10 +527,13 @@ def run(
     console.print()
 
     # Confirm if live
-    if not is_dry_run and not paper:
-        if not Confirm.ask("[bold red]You're about to trade with REAL money. Continue?[/bold red]"):
-            console.print("[dim]Cancelled.[/dim]")
-            return
+    if (
+        not is_dry_run
+        and not paper
+        and not Confirm.ask("[bold red]You're about to trade with REAL money. Continue?[/bold red]")
+    ):
+        console.print("[dim]Cancelled.[/dim]")
+        return
 
     # Run the bot
     async def _run():
@@ -630,7 +630,7 @@ def run(
                     # Create a live display for streaming
                     from rich.text import Text
 
-                    output_text = Text()
+                    Text()
 
                     def on_chunk(chunk: str):
                         # Print each chunk as it arrives
@@ -764,7 +764,7 @@ def status():
     show_banner()
 
     config = load_config()
-    status_info = get_quick_status()
+    get_quick_status()
 
     console.print("[bold]Configuration Status[/bold]\n")
 
@@ -905,7 +905,7 @@ def backtest(strategy_file: str, days: int):
         config = load_config()
 
         with open(strategy_file) as f:
-            strategy_text = f.read()
+            f.read()
 
         console.print(f"[bold]Running backtest ({days} days)[/bold]\n")
         console.print(f"Strategy: {strategy_file}\n")
@@ -1311,10 +1311,9 @@ def restore_db(backup_file: str, force: bool):
 
     console.print("[yellow]WARNING: This will overwrite the current database![/yellow]\n")
 
-    if not force:
-        if not Confirm.ask("Are you sure you want to restore?", default=False):
-            console.print("[dim]Cancelled.[/dim]")
-            return
+    if not force and not Confirm.ask("Are you sure you want to restore?", default=False):
+        console.print("[dim]Cancelled.[/dim]")
+        return
 
     try:
         with console.status("[bold]Restoring database...[/bold]"):
@@ -1322,9 +1321,8 @@ def restore_db(backup_file: str, force: bool):
             if backup_file.endswith(".gz"):
                 import gzip
 
-                with gzip.open(backup_file, "rb") as f_in:
-                    with open(db_path, "wb") as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+                with gzip.open(backup_file, "rb") as f_in, open(db_path, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
             else:
                 shutil.copy2(backup_file, db_path)
 

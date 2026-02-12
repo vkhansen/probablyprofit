@@ -230,7 +230,7 @@ class RiskManager:
         self,
         size: float,
         price: float,
-        market_id: str | None = None,
+        _: str | None = None,
     ) -> bool:
         """
         Check if a position can be opened within risk limits.
@@ -401,7 +401,7 @@ class RiskManager:
         volatility: float = 0.5,
         win_streak: int = 0,
         lose_streak: int = 0,
-        **kwargs,
+        **_,
     ) -> float:
         """
         Dynamic position sizing based on multiple factors.
@@ -453,10 +453,7 @@ class RiskManager:
 
         # Capital preservation factor (reduce as capital decreases)
         capital_ratio = self.current_capital / self.initial_capital
-        if capital_ratio < 0.8:
-            capital_factor = max(0.5, capital_ratio)
-        else:
-            capital_factor = 1.0
+        capital_factor = max(0.5, capital_ratio) if capital_ratio < 0.8 else 1.0
 
         # Combine all factors
         combined_factor = (
@@ -546,7 +543,7 @@ class RiskManager:
         size: float,
         price: float,
         pnl: float = 0.0,
-        market_id: str | None = None,
+        _: str | None = None,
     ) -> None:
         """
         Record a trade (thread-safe).
@@ -711,7 +708,7 @@ class RiskManager:
             async with db.get_session() as session:
                 # Mark all previous records as not latest
                 stmt = select(RiskStateRecord).where(
-                    RiskStateRecord.agent_name == agent_name, RiskStateRecord.is_latest == True
+                    RiskStateRecord.agent_name == agent_name, RiskStateRecord.is_latest
                 )
                 result = await session.execute(stmt)
                 old_records = result.scalars().all()
@@ -758,9 +755,7 @@ class RiskManager:
             async with db.get_session() as session:
                 stmt = (
                     select(RiskStateRecord)
-                    .where(
-                        RiskStateRecord.agent_name == agent_name, RiskStateRecord.is_latest == True
-                    )
+                    .where(RiskStateRecord.agent_name == agent_name, RiskStateRecord.is_latest)
                     .order_by(RiskStateRecord.timestamp.desc())
                     .limit(1)
                 )

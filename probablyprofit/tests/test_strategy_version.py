@@ -144,7 +144,7 @@ class TestStrategyRegistry:
         from probablyprofit.agent.strategy_version import StrategyRegistry
 
         registry = StrategyRegistry()
-        version = registry.register("Active strategy")
+        registry.register("Active strategy")
 
         active = registry.get_active()
 
@@ -205,8 +205,8 @@ class TestStrategyRegistry:
         registry = StrategyRegistry()
 
         # Register first version
-        v1 = registry.register("Strategy 1")
-        time_after_v1 = datetime.now()
+        registry.register("Strategy 1")
+        datetime.now()
 
         # Register second version
         v2 = registry.register("Strategy 2")

@@ -63,7 +63,7 @@ class DiscordNotificationPlugin(OutputPlugin):
             title = f"📢 {event_type.title()}"
             description = str(data)
 
-        payload = {
+        {
             "embeds": [
                 {"title": title, "description": description, "color": self._get_color(event_type)}
             ]

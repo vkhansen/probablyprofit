@@ -103,7 +103,7 @@ class TestPluginRegistry:
         registry = PluginRegistry()
 
         class TestData(DataSourcePlugin):
-            async def fetch(self, query):
+            async def fetch(self, _):
                 return {}
 
         registry.register_plugin(TestData, "test_data", PluginType.DATA_SOURCE)

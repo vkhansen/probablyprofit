@@ -126,6 +126,6 @@ class TestGetSecret:
         manager._keyring_available = False
         manager._crypto_available = False
 
-        result = set_secret("test_secret", "test_value")
+        set_secret("test_secret", "test_value")
         # Without backends, it returns False but cache is updated
         assert manager._cache.get("test_secret") == "test_value"

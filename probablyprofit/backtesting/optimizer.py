@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 from loguru import logger
 
+from probablyprofit.agent.base import BaseAgent
 from probablyprofit.backtesting.data import MockDataGenerator
 from probablyprofit.backtesting.engine import BacktestEngine
 
@@ -47,7 +48,7 @@ class StrategyOptimizer:
 
     def __init__(
         self,
-        agent_factory: Callable[[dict[str, Any]], "BaseAgent"],
+        agent_factory: Callable[[dict[str, Any]], "BaseAgent"],  # type: ignore
         initial_capital: float = 1000.0,
         data_days: int = 30,
         seed: int = 42,
@@ -180,7 +181,7 @@ class StrategyOptimizer:
             generator = MockDataGenerator(seed=self.seed + i)
 
             # Vary volatility
-            vol_multiplier = np.random.uniform(*volatility_range)
+            np.random.uniform(*volatility_range)
 
             markets, timestamps = generator.generate_market_scenario(
                 num_markets=5,

@@ -151,7 +151,7 @@ class PreflightChecker:
 
         return report
 
-    async def _check_kill_switch(self, dry_run: bool = True) -> CheckResult:
+    async def _check_kill_switch(self, _: bool = True) -> CheckResult:
         """Check that kill switch is not active."""
         try:
             from probablyprofit.utils.killswitch import get_kill_switch
@@ -267,7 +267,7 @@ class PreflightChecker:
             message="Private key configured",
         )
 
-    async def _check_database(self, dry_run: bool = True) -> CheckResult:
+    async def _check_database(self, _: bool = True) -> CheckResult:
         """Check that database is accessible and writable."""
         try:
             from probablyprofit.storage.database import get_db_manager
@@ -300,7 +300,7 @@ class PreflightChecker:
                 message=f"Database error: {e}",
             )
 
-    async def _check_ai_provider(self, dry_run: bool = True) -> CheckResult:
+    async def _check_ai_provider(self, _: bool = True) -> CheckResult:
         """Check that at least one AI provider is reachable."""
         from probablyprofit.config import get_config
 

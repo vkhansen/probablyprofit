@@ -4,7 +4,7 @@ Base Plugin Classes
 Abstract base classes for different plugin types.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,7 +22,7 @@ class PluginConfig:
             self.options = {}
 
 
-class BasePlugin(ABC):
+class BasePlugin:
     """Base class for all plugins."""
 
     name: str = "base_plugin"
@@ -108,7 +108,7 @@ class StrategyPlugin(BasePlugin):
         """Filter markets based on strategy criteria."""
         pass
 
-    def score_market(self, market: Any) -> float:
+    def score_market(self, _: Any) -> float:
         """Score a market (0-1). Override for custom scoring."""
         return 0.5
 
@@ -134,7 +134,7 @@ class RiskPlugin(BasePlugin):
         """
         pass
 
-    def modify(self, decision: Any, context: dict[str, Any]) -> Any:
+    def modify(self, decision: Any, _: dict[str, Any]) -> Any:
         """Optionally modify a decision. Override for position sizing etc."""
         return decision
 

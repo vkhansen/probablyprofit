@@ -227,7 +227,7 @@ class SignalAggregator:
                     timeout=self.config.source_timeout,
                 )
 
-                for (name, _), result in zip(tasks.items(), gathered):
+                for (name, _), result in zip(tasks.items(), gathered, strict=False):
                     if isinstance(result, Exception):
                         logger.warning(f"Source '{name}' failed: {result}")
                         sources_failed.append(name)
@@ -341,7 +341,7 @@ class SignalAggregator:
                 "formatted": sentiment.format_for_prompt(),
             }
         except Exception as e:
-            raise RuntimeError(f"Twitter fetch failed: {e}")
+            raise RuntimeError(f"Twitter fetch failed: {e}") from e
 
     async def _fetch_reddit(self, question: str) -> dict[str, Any]:
         """Fetch Reddit sentiment."""
@@ -355,7 +355,7 @@ class SignalAggregator:
                 "formatted": sentiment.format_for_prompt(),
             }
         except Exception as e:
-            raise RuntimeError(f"Reddit fetch failed: {e}")
+            raise RuntimeError(f"Reddit fetch failed: {e}") from e
 
     async def _fetch_trends(self, question: str) -> dict[str, Any]:
         """Fetch Google Trends data."""
@@ -368,7 +368,7 @@ class SignalAggregator:
                 "formatted": trends.format_for_prompt(),
             }
         except Exception as e:
-            raise RuntimeError(f"Trends fetch failed: {e}")
+            raise RuntimeError(f"Trends fetch failed: {e}") from e
 
     async def _fetch_news(self, question: str) -> dict[str, Any]:
         """Fetch Perplexity news."""
@@ -386,7 +386,7 @@ class SignalAggregator:
                 "formatted": context.format_for_prompt(),
             }
         except Exception as e:
-            raise RuntimeError(f"News fetch failed: {e}")
+            raise RuntimeError(f"News fetch failed: {e}") from e
 
     def _check_agreement(self, *sentiments: float) -> float:
         """Check how much sources agree (0=disagree, 1=full agreement)."""

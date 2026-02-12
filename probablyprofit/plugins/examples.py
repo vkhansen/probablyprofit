@@ -105,7 +105,7 @@ Focus on markets with high volume and clear directional movement.
         """Filter to markets with sufficient volume."""
         return [m for m in markets if getattr(m, "volume", 0) > 1000]
 
-    def score_market(self, market: Any) -> float:
+    def score_market(self, _: Any) -> float:
         """Score based on momentum (mock)."""
         # In real implementation, would calculate actual momentum
         return 0.7

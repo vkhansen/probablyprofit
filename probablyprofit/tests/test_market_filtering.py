@@ -13,7 +13,7 @@ from probablyprofit.config import APIConfig, get_config
 
 
 class MockRiskManager:
-    def can_open_position(self, size, price):
+    def can_open_position(self, _, __):
         return True
 
 
@@ -29,7 +29,7 @@ def mock_client():
 class ConcreteTestAgent(BaseAgent):
     """A concrete implementation of BaseAgent for testing."""
 
-    async def decide(self, observation) -> Decision:
+    async def decide(self, _) -> Decision:
         return Decision(action=Action.HOLD, reasoning="Test decision")
 
 

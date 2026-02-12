@@ -149,7 +149,7 @@ class GoogleTrendsClient:
             }
 
             # Get initial page
-            response = await self._client.get(explore_url, params=params)
+            await self._client.get(explore_url, params=params)
 
             # For now, use a simpler approach - scrape the interest data
             # This is a simplified version that estimates interest
@@ -248,7 +248,7 @@ class GoogleTrendsClient:
     async def get_trending_now(
         self,
         geo: str = "US",
-        category: str = "all",
+        _: str = "all",
     ) -> list[str]:
         """
         Get currently trending searches.

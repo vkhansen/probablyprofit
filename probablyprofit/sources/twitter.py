@@ -360,7 +360,7 @@ class TwitterClient:
         contents = re.findall(tweet_pattern, html, re.DOTALL)
         authors = re.findall(author_pattern, html)
 
-        for i, (content, author) in enumerate(zip(contents, authors)):
+        for i, (content, author) in enumerate(zip(contents, authors, strict=False)):
             if i >= max_results:
                 break
 

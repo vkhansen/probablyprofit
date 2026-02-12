@@ -116,7 +116,7 @@ class MockExchangeClient:
         side: str,
         size: float,
         price: float,
-        order_type: str = "LIMIT",
+        _: str = "LIMIT",
         fill_behavior: FillBehavior | None = None,
     ) -> MockOrder:
         """

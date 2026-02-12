@@ -420,7 +420,7 @@ class HistoricalDataStore:
         self,
         condition_id: str,
         days: int = 30,
-        interval_minutes: int = 60,
+        _: int = 60,
     ) -> list[PricePoint]:
         """
         Get price history for a market.
@@ -712,12 +712,6 @@ class HistoricalDataStore:
             "retention_days": self.retention_days,
             "pool_size": self._pool.pool_size,
         }
-
-    async def close(self) -> None:
-        """Close the connection pool and release resources."""
-        await self._pool.close_all()
-        self._initialized = False
-        logger.info("HistoricalDataStore closed")
 
 
 # Global instance

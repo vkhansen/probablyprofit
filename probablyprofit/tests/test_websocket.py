@@ -9,7 +9,6 @@ import pytest
 
 # Check if websockets is available
 try:
-    import websockets
 
     WEBSOCKETS_AVAILABLE = True
 except ImportError:

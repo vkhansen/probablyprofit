@@ -108,9 +108,7 @@ class SecretsManager:
             backend = self._keyring.get_keyring()
             # Check it's not the fail backend
             backend_name = type(backend).__name__
-            if "Fail" in backend_name or "Null" in backend_name:
-                return False
-            return True
+            return "Fail" not in backend_name and "Null" not in backend_name
         except Exception:
             return False
 
@@ -410,10 +408,9 @@ class SecretsManager:
         """
         migrated = 0
         for key, value in plaintext_creds.items():
-            if value and key in SECRET_KEYS:
-                if self.set(key, value):
-                    migrated += 1
-                    logger.info(f"Migrated {key} to secure storage")
+            if value and key in SECRET_KEYS and self.set(key, value):
+                migrated += 1
+                logger.info(f"Migrated {key} to secure storage")
         return migrated
 
     @property

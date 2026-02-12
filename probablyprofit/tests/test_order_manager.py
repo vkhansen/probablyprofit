@@ -316,7 +316,7 @@ class TestOrderManager:
             order_counter[0] += 1
             return MagicMock(order_id=f"ex_order_{order_counter[0]}")
 
-        client.place_order = AsyncMock(side_effect=lambda *args, **kwargs: make_order_response())
+        client.place_order = AsyncMock(side_effect=lambda *_, **__: make_order_response())
         client.cancel_order = AsyncMock(return_value=True)
         return client
 

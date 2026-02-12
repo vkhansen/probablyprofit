@@ -217,7 +217,7 @@ class MockAgent(BaseAgent):
             action=Action.HOLD, reasoning="Test hold decision", confidence=0.5
         )
 
-    async def decide(self, observation: Observation) -> Decision:
+    async def decide(self, _: Observation) -> Decision:
         return self.decision_to_return
 
 

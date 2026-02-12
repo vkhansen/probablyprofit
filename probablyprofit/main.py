@@ -169,7 +169,7 @@ def create_agent(
     strategy_prompt: str,
     strategy,
     args,
-) -> "BaseAgent":
+) -> "BaseAgent":  # type: ignore
     """Create a single agent based on type."""
 
     if agent_type == "openai":

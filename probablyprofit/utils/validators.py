@@ -178,7 +178,7 @@ def validate_private_key(key: str) -> str:
     try:
         int(key_clean, 16)
     except ValueError:
-        raise ValidationException("Private key must be valid hexadecimal")
+        raise ValidationException("Private key must be valid hexadecimal") from None
 
     return key
 
@@ -208,7 +208,7 @@ def validate_address(address: str) -> str:
     try:
         int(address[2:], 16)
     except ValueError:
-        raise ValidationException("Address must be valid hexadecimal")
+        raise ValidationException("Address must be valid hexadecimal") from None
 
     return address
 

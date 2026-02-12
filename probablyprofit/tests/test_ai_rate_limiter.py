@@ -24,7 +24,7 @@ class TestAIProviderLimits:
         assert "gemini" in AI_PROVIDER_LIMITS
 
     def test_provider_limits_structure(self):
-        for provider, limits in AI_PROVIDER_LIMITS.items():
+        for _, limits in AI_PROVIDER_LIMITS.items():
             assert limits.requests_per_minute > 0
             assert limits.tokens_per_minute > 0
 

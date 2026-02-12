@@ -6,7 +6,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 try:
     from py_clob_client.client import ClobClient
-    from py_clob_client.constants import POLYGON
 
     CLOB_AVAILABLE = True
 except ImportError:

@@ -498,7 +498,6 @@ def load_config() -> Config:
 
     # Try to use secure secrets manager (keyring/encrypted storage)
     try:
-        from probablyprofit.utils.logging import register_secret
         from probablyprofit.utils.secrets import get_secrets_manager
 
         secrets = get_secrets_manager()
@@ -589,15 +588,11 @@ def load_config() -> Config:
     if os.getenv("MARKET_TAG_SLUG"):
         config.api.market_tag_slug = os.getenv("MARKET_TAG_SLUG")
     if os.getenv("MARKET_TAG_ID"):
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             config.api.market_tag_id = int(os.getenv("MARKET_TAG_ID"))
-        except (ValueError, TypeError):
-            pass  # Keep default if invalid
     if os.getenv("MARKET_DURATION_MAX_MINUTES"):
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             config.api.market_duration_max_minutes = int(os.getenv("MARKET_DURATION_MAX_MINUTES"))
-        except (ValueError, TypeError):
-            pass  # Keep default if invalid
 
     # Determine if configured
     config.is_configured = len(config.get_available_agents()) > 0
@@ -703,7 +698,7 @@ def save_config(config: Config) -> None:
             raise RuntimeError(
                 "Cannot save credentials: No secure storage available. "
                 "Install 'keyring' or 'cryptography' package."
-            )
+            ) from None
 
 
 def validate_api_key(provider: str, key: str) -> bool:

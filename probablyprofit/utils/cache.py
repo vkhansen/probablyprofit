@@ -327,10 +327,7 @@ def cached(
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             # Build cache key
-            if key_builder:
-                key = key_builder(*args, **kwargs)
-            else:
-                key = f"{args}:{kwargs}"
+            key = key_builder(*args, **kwargs) if key_builder else f"{args}:{kwargs}"
 
             # Check cache
             cached_value = func_cache.get(key)
@@ -349,10 +346,7 @@ def cached(
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
-            if key_builder:
-                key = key_builder(*args, **kwargs)
-            else:
-                key = f"{args}:{kwargs}"
+            key = key_builder(*args, **kwargs) if key_builder else f"{args}:{kwargs}"
 
             cached_value = func_cache.get(key)
             if cached_value is not None:

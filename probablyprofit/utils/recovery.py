@@ -103,10 +103,7 @@ class RecoveryManager:
 
     def _get_checkpoint_path(self, agent_name: str, timestamp: str | None = None) -> Path:
         """Get path for a checkpoint file."""
-        if timestamp:
-            filename = f"{agent_name}_{timestamp}.json"
-        else:
-            filename = f"{agent_name}_latest.json"
+        filename = f"{agent_name}_{timestamp}.json" if timestamp else f"{agent_name}_latest.json"
         return self.checkpoint_dir / filename
 
     def _get_agent_checkpoints(self, agent_name: str) -> list[Path]:

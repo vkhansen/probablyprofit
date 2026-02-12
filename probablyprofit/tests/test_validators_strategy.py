@@ -152,7 +152,7 @@ class TestValidateStrategy:
         with pytest.raises(ValidationException):
             validate_strategy("Buy")
 
-    def test_strategy_without_trading_terms_warns(self, caplog):
+    def test_strategy_without_trading_terms_warns(self):
         """Test that strategy without trading terms returns warnings."""
         from probablyprofit.utils.validators import validate_strategy
 

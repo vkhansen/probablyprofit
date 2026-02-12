@@ -441,7 +441,7 @@ class TestFullTradeFlow:
         from probablyprofit.agent.base import BaseAgent
 
         class TestAgent(BaseAgent):
-            async def decide(self, observation: Observation) -> Decision:
+            async def decide(self, _: Observation) -> Decision:
                 return Decision(action="hold", reasoning="Test hold")
 
         agent = TestAgent(
@@ -610,7 +610,7 @@ class TestKillSwitchIntegration:
         risk_manager = RiskManager(initial_capital=1000.0)
 
         class TestAgent(BaseAgent):
-            async def decide(self, observation: Observation) -> Decision:
+            async def decide(self, _: Observation) -> Decision:
                 return Decision(action="hold", reasoning="Test")
 
         agent = TestAgent(

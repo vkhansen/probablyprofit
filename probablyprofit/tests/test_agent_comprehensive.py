@@ -311,7 +311,7 @@ class TestAgentHealthStatus:
         assert status["observations"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_health_status_after_run(self, mock_agent, mock_client):
+    async def test_get_health_status_after_run(self, mock_agent):
         # Simulate some activity
         await mock_agent.observe()
         decision = Decision(action="hold", reasoning="Test")
@@ -332,7 +332,7 @@ class TestAgentLoop:
         assert mock_agent.running is False
 
     @pytest.mark.asyncio
-    async def test_run_loop_single_iteration(self, mock_agent, mock_client):
+    async def test_run_loop_single_iteration(self, mock_agent):
         """Test that the loop can complete one iteration."""
         iterations = []
 
@@ -349,7 +349,7 @@ class TestAgentLoop:
         assert len(iterations) == 1
 
     @pytest.mark.asyncio
-    async def test_run_loop_error_recovery(self, mock_agent, mock_client):
+    async def test_run_loop_error_recovery(self, mock_agent):
         """Test that the loop handles errors gracefully."""
         call_count = [0]
 
@@ -373,7 +373,7 @@ class TestAgentLoop:
     @pytest.mark.asyncio
     @pytest.mark.slow  # This test takes ~35s due to real exponential backoff
     @pytest.mark.timeout(45)  # Allow time for exponential backoff (5s + 10s + 20s)
-    async def test_max_consecutive_errors_stops_loop(self, mock_agent, mock_client):
+    async def test_max_consecutive_errors_stops_loop(self, mock_agent):
         """Test that too many consecutive errors stops the loop."""
         error_count = [0]
         max_errors = 3

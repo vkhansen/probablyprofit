@@ -244,14 +244,13 @@ class CircuitBreaker:
     @property
     def state(self) -> CircuitState:
         """Get current state, potentially transitioning from OPEN to HALF_OPEN."""
-        if self._state == CircuitState.OPEN:
-            if (
-                self._last_failure_time
-                and (time.time() - self._last_failure_time) >= self.config.timeout
-            ):
-                self._state = CircuitState.HALF_OPEN
-                self._success_count = 0
-                logger.info(f"[CircuitBreaker] '{self.name}' transitioning to HALF_OPEN")
+        if self._state == CircuitState.OPEN and (
+            self._last_failure_time
+            and (time.time() - self._last_failure_time) >= self.config.timeout
+        ):
+            self._state = CircuitState.HALF_OPEN
+            self._success_count = 0
+            logger.info(f"[CircuitBreaker] '{self.name}' transitioning to HALF_OPEN")
         return self._state
 
     @property
@@ -275,7 +274,7 @@ class CircuitBreaker:
                 # Reset failure count on success
                 self._failure_count = 0
 
-    async def _record_failure(self, exception: Exception) -> None:
+    async def _record_failure(self, _: Exception) -> None:
         """Record a failed call."""
         async with self._lock:
             self._failure_count += 1

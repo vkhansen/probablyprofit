@@ -201,11 +201,7 @@ class AIRateLimiter:
         self._consecutive_429s += 1
 
         # Calculate backoff
-        if retry_after:
-            backoff = retry_after
-        else:
-            # Exponential backoff: 5s, 10s, 20s, 40s, max 60s
-            backoff = min(5.0 * (2**self._consecutive_429s), 60.0)
+        backoff = retry_after or min(5.0 * (2**self._consecutive_429s), 60.0)
 
         self._backoff_until = time.time() + backoff
 

@@ -91,10 +91,10 @@ def validate_and_parse_decision(response_text: str, model_class: type[T] = Decis
 
         error_str = "; ".join(error_msgs)
         logger.warning(f"Schema validation failed: {error_str}")
-        raise SchemaValidationError(f"Schema validation failed: {error_str}")
+        raise SchemaValidationError(f"Schema validation failed: {error_str}") from e
 
     except Exception as e:
         if isinstance(e, SchemaValidationError):
             raise
         logger.error(f"Unexpected validation error: {e}")
-        raise SchemaValidationError(f"Unexpected validation error: {e}")
+        raise SchemaValidationError(f"Unexpected validation error: {e}") from e

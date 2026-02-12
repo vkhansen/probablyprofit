@@ -8,7 +8,7 @@ from probablyprofit.risk.manager import RiskManager
 
 
 class MockAgent(BaseAgent):
-    async def decide(self, observation):
+    async def decide(self, _):
         return Decision(action="buy", market_id="test_market", outcome="Yes", size=10.0, price=0.5)
 
 
