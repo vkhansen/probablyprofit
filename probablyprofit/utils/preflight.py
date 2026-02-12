@@ -6,6 +6,7 @@ All checks must pass for live trading to proceed.
 """
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -109,7 +110,7 @@ class PreflightChecker:
 
     def __init__(self):
         """Initialize preflight checker."""
-        self._checks: list[callable] = [
+        self._checks: list[Callable[..., Any]] = [
             self._check_kill_switch,
             self._check_credentials,
             self._check_private_key,
