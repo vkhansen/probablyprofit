@@ -33,6 +33,10 @@ from probablyprofit.risk.manager import RiskManager
 def parse_args():
     parser = argparse.ArgumentParser(description="ProbablyProfit: AI Trading Bot for Polymarket")
 
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose debug logging"
+    )
+
     # Platform selection
     parser.add_argument(
         "--platform",

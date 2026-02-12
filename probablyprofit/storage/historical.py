@@ -220,7 +220,7 @@ class HistoricalDataStore:
     async def close(self):
         """Close the connection pool."""
         if self._pool:
-            await self._pool.close()
+            await self._pool.close_all()
             logger.info("HistoricalDataStore connection pool closed.")
 
     async def initialize(self) -> None:

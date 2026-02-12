@@ -5,6 +5,7 @@ Automatically monitors open positions and executes stop-loss/take-profit orders.
 """
 
 import asyncio
+import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
