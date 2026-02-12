@@ -136,7 +136,7 @@ class GeminiAgent(BaseAgent):
 
         except (ConnectionError, TimeoutError) as e:
             logger.warning(f"Gemini API connection error (will retry): {e}")
-            raise NetworkException(f"Gemini API connection error: {e}")
+            raise NetworkException(f"Gemini API connection error: {e}") from e
         except Exception as e:
             error_str = str(e).lower()
             if any(
@@ -144,8 +144,8 @@ class GeminiAgent(BaseAgent):
                 for x in ["timeout", "connection", "rate limit", "429", "503", "502", "quota"]
             ):
                 logger.warning(f"Gemini API transient error (will retry): {e}")
-                raise NetworkException(f"Gemini API transient error: {e}")
-            raise AgentException(f"Gemini API error: {e}")
+                raise NetworkException(f"Gemini API transient error: {e}") from e
+            raise AgentException(f"Gemini API error: {e}") from e
 
     def _format_observation(self, observation: Observation) -> str:
         """
@@ -179,14 +179,13 @@ Respond with a JSON object with this schema:
             decision = validate_and_parse_decision(content, Decision)
 
             # Additional clamping if needed
-            if decision.confidence < 0 or decision.confidence > 1:
+            if not 0 <= decision.confidence <= 1:
                 logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
                 decision.confidence = max(0.0, min(1.0, decision.confidence))
 
-            if decision.price is not None:
-                if decision.price < 0 or decision.price > 1:
-                    logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
-                    decision.price = max(0.0, min(1.0, decision.price))
+            if decision.price is not None and not 0 <= decision.price <= 1:
+                logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
+                decision.price = max(0.0, min(1.0, decision.price))
 
             if not decision.market_id or not decision.outcome:
                 logger.warning(
@@ -201,4 +200,4 @@ Respond with a JSON object with this schema:
             raise
         except Exception as e:
             logger.error(f"Error getting decision from Gemini: {e}")
-            raise AgentException(f"Gemini decision error: {e}")
+            raise AgentException(f"Gemini decision error: {e}") from e

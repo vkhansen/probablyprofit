@@ -572,7 +572,7 @@ class OrderManager:
             order.status_message = str(e)
             await self.order_book.update(order)
             logger.error(f"Order submission failed: {e}")
-            raise OrderException(f"Order submission failed: {e}")
+            raise OrderException(f"Order submission failed: {e}") from e
 
     async def cancel_order(self, order_id: str, reason: str = "User cancelled") -> bool:
         """
@@ -617,7 +617,7 @@ class OrderManager:
             raise
         except Exception as e:
             logger.error(f"Cancel failed for {order_id}: {e}")
-            raise OrderCancelError(f"Cancellation failed: {e}")
+            raise OrderCancelError(f"Cancellation failed: {e}") from e
 
     async def cancel_all(self, market_id: str | None = None) -> int:
         """
@@ -703,7 +703,7 @@ class OrderManager:
 
         except Exception as e:
             logger.error(f"Modify failed for {order_id}: {e}")
-            raise OrderModifyError(f"Modification failed: {e}")
+            raise OrderModifyError(f"Modification failed: {e}") from e
 
     async def process_fill(
         self,
@@ -802,13 +802,12 @@ class OrderManager:
 
             try:
                 # Fetch order status from exchange
-                if self.platform == "polymarket":
+                if self.platform == "polymarket" and hasattr(self.client, "get_order"):
                     # Use the CLOB API to get order status
-                    if hasattr(self.client, "get_order"):
-                        status = await self.client.get_order(order.order_id)
-                        if status:
-                            await self._update_from_exchange(order, status)
-                            results["updated"] += 1
+                    status = await self.client.get_order(order.order_id)
+                    if status:
+                        await self._update_from_exchange(order, status)
+                        results["updated"] += 1
 
             except Exception as e:
                 results["errors"].append(f"{order.order_id}: {e}")
@@ -866,7 +865,6 @@ class OrderManager:
         # Extract status and fill info (adjust for platform)
         if self.platform == "polymarket":
             exchange_status = exchange_data.get("status", "").lower()
-            float(exchange_data.get("filled_size", 0))
 
             # Map exchange status to our status
             status_map = {

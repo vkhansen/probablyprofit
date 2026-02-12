@@ -9,13 +9,13 @@ PERFORMANCE OPTIMIZATION:
     ~3x faster calculations for large equity curves.
 """
 
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 import pandas as pd
 
 # Type alias for array-like data
-ArrayLike = np.ndarray | pd.Series | list[float]
+ArrayLike: TypeAlias = np.ndarray | pd.Series | list[float]
 
 
 def _to_numpy(data: ArrayLike) -> np.ndarray:

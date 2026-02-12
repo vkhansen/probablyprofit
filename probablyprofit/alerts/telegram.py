@@ -101,7 +101,7 @@ class TelegramAlerter:
 
         logger.info(
             f"Telegram alerter initialized. "
-            f"Levels: {[l.value for l in self.alert_levels]}, "
+            f"Levels: {[level.value for level in self.alert_levels]}, "
             f"Rate limit: {rate_limit_per_minute}/min"
         )
 

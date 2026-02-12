@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 from probablyprofit.agent.anthropic_agent import AnthropicAgent
+from probablyprofit.agent.base import BaseAgent
 from probablyprofit.agent.ensemble import EnsembleAgent, VotingStrategy
 from probablyprofit.agent.fallback import create_fallback_agent
 from probablyprofit.agent.gemini_agent import GeminiAgent
@@ -171,7 +172,7 @@ def create_agent(
     strategy_prompt: str,
     strategy,
     args,
-) -> "BaseAgent":  # type: ignore
+) -> BaseAgent:
     """Create a single agent based on type."""
 
     if agent_type == "openai":

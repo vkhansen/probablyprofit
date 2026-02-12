@@ -57,15 +57,16 @@ class MockAgent(BaseAgent):
             price = market.outcome_prices[0]
 
             # Check for buy opportunity
-            if price < self.buy_threshold:
-                if not best_buy or price < best_buy.outcome_prices[0]:
-                    best_buy = market
+            if price < self.buy_threshold and (not best_buy or price < best_buy.outcome_prices[0]):
+                best_buy = market
 
             # Check for sell in positions
-            if market.condition_id in [p.market_id for p in observation.positions]:
-                if price > self.sell_threshold:
-                    if not best_sell or price > best_sell.outcome_prices[0]:
-                        best_sell = market
+            if (
+                market.condition_id in [p.market_id for p in observation.positions]
+                and price > self.sell_threshold
+                and (not best_sell or price > best_sell.outcome_prices[0])
+            ):
+                best_sell = market
 
         # Prioritize sells (realize profits)
         if best_sell:

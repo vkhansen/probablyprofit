@@ -18,32 +18,9 @@ from collections.abc import Callable, Coroutine
 from datetime import datetime
 from typing import Any, TypeVar
 
-T = TypeVar("T")
-
 import httpx
 from loguru import logger
 from pydantic import BaseModel, Field
-
-try:
-    from py_clob_client.client import ClobClient
-    from py_clob_client.clob_types import ApiCreds, OrderArgs, OrderType
-
-    params_avail = True
-except ImportError:
-    ClobClient = None
-    OrderArgs = None
-    OrderType = None
-    params_avail = False
-    logger.warning("py-clob-client not installed. Trading functionality will be limited.")
-
-# Import eth-account for wallet operations when py-clob-client unavailable
-try:
-    from eth_account import Account
-
-    eth_account_avail = True
-except ImportError:
-    Account = None
-    eth_account_avail = False
 
 from probablyprofit.api.async_wrapper import AsyncClientWrapper, run_sync
 from probablyprofit.api.exceptions import (
@@ -61,6 +38,30 @@ from probablyprofit.utils.validators import (
     validate_price,
     validate_side,
 )
+
+T = TypeVar("T")
+
+
+try:
+    from py_clob_client.client import ClobClient
+    from py_clob_client.clob_types import OrderArgs, OrderType
+
+    params_avail = True
+except ImportError:
+    ClobClient = None
+    OrderArgs = None
+    OrderType = None
+    params_avail = False
+    logger.warning("py-clob-client not installed. Trading functionality will be limited.")
+
+# Import eth-account for wallet operations when py-clob-client unavailable
+try:
+    from eth_account import Account
+
+    eth_account_avail = True
+except ImportError:
+    Account = None
+    eth_account_avail = False
 
 
 def _get_circuit_breakers() -> dict[str, CircuitBreaker]:
@@ -425,7 +426,6 @@ class PolymarketClient:
     async def get_markets(
         self,
         closed: bool = False,
-        active: bool = True,
         limit: int = 100,
         offset: int = 0,
         tag_id: int | None = None,
@@ -476,7 +476,7 @@ class PolymarketClient:
                 "/markets",
                 params={
                     "closed": str(closed).lower(),
-                    "active": str(active).lower(),
+                    "active": "true",
                     "limit": limit,
                     "offset": offset,
                     "tag_id": tag_id,
@@ -596,16 +596,16 @@ class PolymarketClient:
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
-                raise RateLimitException(f"Rate limited by Polymarket: {e}")
-            raise NetworkException(f"HTTP error fetching markets: {e}")
+                raise RateLimitException(f"Rate limited by Polymarket: {e}") from e
+            raise NetworkException(f"HTTP error fetching markets: {e}") from e
         except httpx.RequestError as e:
-            raise NetworkException(f"Network error fetching markets: {e}")
+            raise NetworkException(f"Network error fetching markets: {e}") from e
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON response from markets API: {e}")
-            raise APIException(f"Invalid JSON response: {e}")
+            raise APIException(f"Invalid JSON response: {e}") from e
         except (ValueError, TypeError) as e:
             logger.error(f"Data parsing error fetching markets: {e}")
-            raise APIException(f"Failed to parse market data: {e}")
+            raise APIException(f"Failed to parse market data: {e}") from e
 
     async def get_market(self, condition_id: str) -> Market | None:
         """
@@ -816,7 +816,6 @@ class PolymarketClient:
         side: str,
         size: float,
         price: float,
-        order_type: str = "LIMIT",
     ) -> Order | None:
         """
         Place an order with validation and resilience.
@@ -943,10 +942,10 @@ class PolymarketClient:
             raise
         except httpx.HTTPError as e:
             logger.error(f"Network error placing order: {e}")
-            raise NetworkException(f"Network error: {e}")
+            raise NetworkException(f"Network error: {e}") from e
         except Exception as e:
             logger.error(f"Error placing order: {e}")
-            raise OrderException(f"Order placement failed: {e}")
+            raise OrderException(f"Order placement failed: {e}") from e
 
     async def cancel_order(self, order_id: str) -> bool:
         """

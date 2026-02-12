@@ -8,6 +8,7 @@ Handles loading, saving, and validating configuration from multiple sources:
 4. Secure secrets storage (keyring/encrypted file)
 """
 
+import contextlib
 import os
 from dataclasses import dataclass, field
 from pathlib import Path

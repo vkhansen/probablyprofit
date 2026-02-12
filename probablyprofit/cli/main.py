@@ -30,6 +30,14 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from probablyprofit.config import (
+    Config,
+    get_quick_status,
+    load_config,
+    save_config,
+    validate_api_key,
+)
+
 # Ensure package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -51,14 +59,6 @@ logger.add(
 # Also suppress other loggers
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-from probablyprofit.config import (
-    Config,
-    get_quick_status,
-    load_config,
-    save_config,
-    validate_api_key,
-)
 
 console = Console()
 

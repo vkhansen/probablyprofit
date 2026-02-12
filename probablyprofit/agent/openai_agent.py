@@ -109,15 +109,15 @@ class OpenAIAgent(BaseAgent):
 
         except (ConnectionError, TimeoutError) as e:
             logger.warning(f"OpenAI API connection error (will retry): {e}")
-            raise NetworkException(f"OpenAI API connection error: {e}")
+            raise NetworkException(f"OpenAI API connection error: {e}") from e
         except Exception as e:
             error_str = str(e).lower()
             if any(
                 x in error_str for x in ["timeout", "connection", "rate limit", "429", "503", "502"]
             ):
                 logger.warning(f"OpenAI API transient error (will retry): {e}")
-                raise NetworkException(f"OpenAI API transient error: {e}")
-            raise AgentException(f"OpenAI API error: {e}")
+                raise NetworkException(f"OpenAI API transient error: {e}") from e
+            raise AgentException(f"OpenAI API error: {e}") from e
 
     def _format_observation(self, observation: Observation) -> str:
         """
@@ -170,7 +170,6 @@ class OpenAIAgent(BaseAgent):
                 # For o1, we put everything in the user prompt or use developer role if available.
                 # Currently safe bet is to prepend system instruction to user content.
                 combined_prompt = f"""{self.strategy_prompt}
-
 ---
 MARKET DATA:
 {obs_text}
@@ -214,14 +213,13 @@ Output schema:
             decision = validate_and_parse_decision(content, Decision)
 
             # Additional clamping if Pydantic allowed out-of-bounds values (depending on model)
-            if decision.confidence < 0 or decision.confidence > 1:
+            if not 0 <= decision.confidence <= 1:
                 logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
                 decision.confidence = max(0.0, min(1.0, decision.confidence))
 
-            if decision.price is not None:
-                if decision.price < 0 or decision.price > 1:
-                    logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
-                    decision.price = max(0.0, min(1.0, decision.price))
+            if decision.price is not None and not 0 <= decision.price <= 1:
+                logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
+                decision.price = max(0.0, min(1.0, decision.price))
 
             return decision
 
@@ -234,4 +232,4 @@ Output schema:
             raise
         except Exception as e:
             logger.error(f"Error getting decision from OpenAI: {e}")
-            raise AgentException(f"OpenAI decision error: {e}")
+            raise AgentException(f"OpenAI decision error: {e}") from e
