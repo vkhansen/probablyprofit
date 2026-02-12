@@ -480,6 +480,19 @@ platforms:
 
 See [.env.example](.env.example) for all configuration options.
 
+### Market Filtering
+
+You can control which markets the bot trades by setting the following environment variables. This is highly recommended to focus your strategy and avoid unwanted trades.
+
+| Variable                      | Description                                                                                              | Example                               |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `MARKET_TAG_SLUG`             | Filters markets by a specific category slug (e.g., "cryptocurrency", "politics").                        | `cryptocurrency`                      |
+| `MARKET_WHITELIST_KEYWORDS`   | Comma-separated list. Market titles **must** contain at least one of these keywords.                     | `"BTC,ETH,15M"`                       |
+| `MARKET_BLACKLIST_KEYWORDS`   | Comma-separated list. Market titles **must not** contain any of these keywords.                          | `"daily,weekly,monthly"`              |
+| `MARKET_DURATION_MAX_MINUTES` | Sets a maximum time-to-resolution for markets, in minutes. Useful for short-term strategies.             | `30` (for markets ending in 30 mins) |
+
+See the [Filtering Guide](docs/filtering-guide.md) for a more detailed explanation.
+
 ---
 
 ## Supported Platforms
