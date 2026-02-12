@@ -343,6 +343,9 @@ def setup(reconfigure: bool = False):
     default="manual",
     help="Position sizing method",
 )
+@click.option("--tag-slug", help="Filter markets by tag slug (e.g., 'cryptocurrency')")
+@click.option("--whitelist", help="Comma-separated keywords to include in market questions")
+@click.option("--duration-max", type=int, help="Maximum market duration in minutes")
 def run(
     strategy: Optional[str],
     strategy_file: Optional[str],
@@ -360,6 +363,9 @@ def run(
     no_stream: bool,
     kelly: bool,
     sizing: str,
+    tag_slug: Optional[str],
+    whitelist: Optional[str],
+    duration_max: Optional[int],
 ):
     """
     Start the trading bot.
@@ -377,6 +383,14 @@ def run(
         probablyprofit run --paper "Momentum trading on high volume"
     """
     config = load_config()
+
+    # -- CLI Overrides --
+    if tag_slug:
+        config.api.market_tag_slug = tag_slug
+    if whitelist:
+        config.api.market_whitelist_keywords = [k.strip() for k in whitelist.split(",")]
+    if duration_max:
+        config.api.market_duration_max_minutes = duration_max
 
     # Check if configured
     if not config.is_configured:

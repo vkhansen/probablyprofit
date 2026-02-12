@@ -425,28 +425,38 @@ class PolymarketClient:
 
     async def get_markets(
         self,
-        active: bool = True,
+        closed: bool = False,
         limit: int = 100,
         offset: int = 0,
+        tag_id: Optional[int] = None,
+        end_date_max: Optional[str] = None,
     ) -> List[Market]:
         """
         Fetch available markets from Gamma API.
-
         Args:
-            active: Only fetch active markets
-            limit: Maximum number of markets to return
-            offset: Pagination offset
-
+            closed: Whether to include closed markets. Defaults to False.
+            limit: Maximum number of markets to return.
+            offset: Pagination offset.
+            tag_id: Filter by a specific tag ID.
+            end_date_max: Filter by markets ending before this ISO datetime.
         Returns:
             List of Market objects
         """
-        return await self._get_markets_with_retry(active, limit, offset)
+        return await self._get_markets_with_retry(
+            closed=closed,
+            limit=limit,
+            offset=offset,
+            tag_id=tag_id,
+            end_date_max=end_date_max,
+        )
 
     async def _get_markets_with_retry(
         self,
-        active: bool,
+        closed: bool,
         limit: int,
         offset: int,
+        tag_id: Optional[int] = None,
+        end_date_max: Optional[str] = None,
     ) -> List[Market]:
         """Internal method with retry and circuit breaker."""
         # Get config for retry settings
@@ -465,9 +475,11 @@ class PolymarketClient:
             response = await self.gamma_client.get(
                 "/markets",
                 params={
-                    "closed": "false",  # ONLY open markets (most important filter)
-                    "limit": limit * 2,  # Fetch extra to filter out low-volume
+                    "closed": str(closed).lower(),
+                    "limit": limit,
                     "offset": offset,
+                    "tag_id": tag_id,
+                    "end_date_max": end_date_max,
                 },
             )
             response.raise_for_status()
@@ -647,6 +659,38 @@ class PolymarketClient:
         except (ValueError, TypeError, KeyError) as e:
             logger.error(f"Data parsing error for market {condition_id}: {e}")
             return None
+
+    async def get_tags(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch tags from the Gamma API.
+
+        Args:
+            limit: Maximum number of tags to return
+            offset: Pagination offset
+
+        Returns:
+            List of tag dictionaries
+        """
+        try:
+            response = await self.gamma_client.get(
+                "/tags",
+                params={"limit": limit, "offset": offset},
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error fetching tags: {e}")
+            return []
+        except httpx.RequestError as e:
+            logger.error(f"Network error fetching tags: {e}")
+            return []
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in tags response: {e}")
+            return []
 
     async def get_orderbook(self, condition_id: str, outcome: str) -> Dict[str, Any]:
         """

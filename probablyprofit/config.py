@@ -68,6 +68,12 @@ class APIConfig:
     price_cache_ttl: float = 10.0
     positions_cache_max_size: int = 200
 
+    # Market filtering
+    market_whitelist_keywords: List[str] = field(default_factory=list)
+    market_blacklist_keywords: List[str] = field(default_factory=list)
+    market_tag_slug: Optional[str] = "cryptocurrency"
+    market_duration_max_minutes: Optional[int] = None
+
 
 @dataclass
 class AgentConfig:
@@ -439,6 +445,18 @@ def load_config() -> Config:
                 "positions_cache_max_size", config.api.positions_cache_max_size
             )
 
+            # Market filtering settings
+            config.api.market_whitelist_keywords = api.get(
+                "market_whitelist_keywords", config.api.market_whitelist_keywords
+            )
+            config.api.market_blacklist_keywords = api.get(
+                "market_blacklist_keywords", config.api.market_blacklist_keywords
+            )
+            config.api.market_tag_slug = api.get("market_tag_slug", config.api.market_tag_slug)
+            config.api.market_duration_max_minutes = api.get(
+                "market_duration_max_minutes", config.api.market_duration_max_minutes
+            )
+
             # Agent settings
             agent = data.get("agent", {})
             config.agent.default_loop_interval = agent.get(
@@ -551,6 +569,25 @@ def load_config() -> Config:
     # Load max drawdown from env
     if os.getenv("MAX_DRAWDOWN_PCT"):
         config.risk.max_drawdown_pct = float(os.getenv("MAX_DRAWDOWN_PCT"))
+
+    # Load market filtering from env
+    if os.getenv("MARKET_WHITELIST_KEYWORDS"):
+        config.api.market_whitelist_keywords = [
+            k.strip() for k in os.getenv("MARKET_WHITELIST_KEYWORDS", "").split(",") if k.strip()
+        ]
+    if os.getenv("MARKET_BLACKLIST_KEYWORDS"):
+        config.api.market_blacklist_keywords = [
+            k.strip() for k in os.getenv("MARKET_BLACKLIST_KEYWORDS", "").split(",") if k.strip()
+        ]
+    if os.getenv("MARKET_TAG_SLUG"):
+        config.api.market_tag_slug = os.getenv("MARKET_TAG_SLUG")
+    if os.getenv("MARKET_DURATION_MAX_MINUTES"):
+        try:
+            config.api.market_duration_max_minutes = int(
+                os.getenv("MARKET_DURATION_MAX_MINUTES")
+            )
+        except (ValueError, TypeError):
+            pass  # Keep default if invalid
 
     # Determine if configured
     config.is_configured = len(config.get_available_agents()) > 0

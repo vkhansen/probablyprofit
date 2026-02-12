@@ -26,9 +26,11 @@ Fetch available prediction markets.
 
 ```python
 markets = await client.get_markets(
-    active=True,  # Only active markets
-    limit=100,    # Max results
-    offset=0      # Pagination offset
+    closed=False,
+    limit=100,
+    offset=0,
+    tag_id=123,  # Optional tag ID
+    end_date_max="2024-12-31T23:59:59Z"  # Optional max end date
 )
 ```
 
@@ -43,6 +45,16 @@ market = await client.get_market(condition_id="0x123...")
 ```
 
 **Returns**: `Optional[Market]`
+
+##### get_tags()
+
+Fetch available market tags.
+
+```python
+tags = await client.get_tags(limit=100, offset=0)
+```
+
+**Returns**: `List[Dict[str, Any]]`
 
 ##### place_order()
 

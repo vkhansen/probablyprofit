@@ -12,7 +12,7 @@ Core agent framework implementing the observe-decide-act loop.
 import asyncio
 from abc import ABC, abstractmethod
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 # Note: Type checking import to avoid circular dependency if needed, but BaseStrategy doesn't import BaseAgent
@@ -353,6 +353,27 @@ class BaseAgent(ABC):
         key = f"{market_id}:{outcome}"
         self._open_positions.add(key)
 
+    async def _resolve_tag_id(self, tag_slug: Optional[str]) -> Optional[int]:
+        """Helper to resolve a tag slug to a tag ID."""
+        if not tag_slug:
+            return None
+        try:
+            tags = await self.client.get_tags()
+            for tag in tags:
+                if tag.get("slug") == tag_slug:
+                    logger.info(f"Resolved tag slug '{tag_slug}' to ID {tag['id']}")
+                    return tag["id"]
+            logger.warning(f"Tag slug '{tag_slug}' not found.")
+        except Exception as e:
+            logger.error(f"Error resolving tag ID for slug '{tag_slug}': {e}")
+        return None
+
+    def _calculate_max_end_date(self, max_minutes: Optional[int]) -> Optional[str]:
+        """Helper to calculate max end date from now + duration."""
+        if max_minutes is None:
+            return None
+        return (datetime.now() + timedelta(minutes=max_minutes)).isoformat()
+
     async def observe(self) -> Observation:
         """
         Observe the current market state.
@@ -362,8 +383,35 @@ class BaseAgent(ABC):
         """
         logger.debug(f"[{self.name}] Observing market state...")
 
-        # Fetch current data
-        markets = await self.client.get_markets(active=True, limit=50)
+        cfg = get_config()
+
+        # Resolve tag_id from slug
+        tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)
+
+        # Calculate max end date
+        end_date_max = self._calculate_max_end_date(cfg.api.market_duration_max_minutes)
+
+        # Fetch markets with new filters
+        markets = await self.client.get_markets(
+            closed=False,
+            limit=100,  # Use a reasonable default limit
+            tag_id=tag_id,
+            end_date_max=end_date_max,
+        )
+
+        # Post-fetch keyword filtering
+        if cfg.api.market_whitelist_keywords:
+            markets = [
+                m
+                for m in markets
+                if any(k.lower() in m.question.lower() for k in cfg.api.market_whitelist_keywords)
+            ]
+        if cfg.api.market_blacklist_keywords:
+            markets = [
+                m
+                for m in markets
+                if not any(k.lower() in m.question.lower() for k in cfg.api.market_blacklist_keywords)
+            ]
 
         # Cache market names for better logging
         for market in markets:

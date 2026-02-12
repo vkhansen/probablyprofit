@@ -113,21 +113,9 @@ class CustomStrategy(BaseStrategy):
         self.keywords = [k.lower() for k in keywords] if keywords else []
 
     def filter_markets(self, markets: List[Market]) -> List[Market]:
-        # unique filtering logic: if keywords provided, filter by them.
-        # otherwise return top active markets by volume.
-        active_markets = [m for m in markets if m.active and m.volume > 0]
-
-        if not self.keywords:
-            # Sort by volume descending and take top 20
-            active_markets.sort(key=lambda x: x.volume, reverse=True)
-            return active_markets[:20]
-
-        filtered = []
-        for m in active_markets:
-            text = (m.question + " " + (m.description or "")).lower()
-            if any(k in text for k in self.keywords):
-                filtered.append(m)
-        return filtered
+        # This strategy now relies on the upstream filtering from the agent's observe method.
+        # It can be used for additional filtering if needed, but for now, we pass it through.
+        return markets
 
     def get_prompt(self) -> str:
         return self.prompt_text
@@ -463,4 +451,29 @@ Decision Output:
 - Never take large directional bets - arbitrage should be risk-free
 
 Note: True arbitrage is rare. Most "arbitrage" opportunities disappear quickly.
+"""
+
+
+class ShortTermCryptoStrategy(BaseStrategy):
+    """
+    Strategy focused on short-term cryptocurrency markets.
+    """
+
+    def __init__(self):
+        super().__init__(name="ShortTermCrypto")
+
+    def filter_markets(self, markets: List[Market]) -> List[Market]:
+        # This strategy relies on the upstream filtering from the agent's observe method
+        # which should be configured with tag_slug="cryptocurrency" and whitelist="15M"
+        return markets
+
+    def get_prompt(self) -> str:
+        return """
+You are a Short-Term Crypto Trader.
+Your goal is to identify and trade on short-term price movements in 15-minute cryptocurrency markets.
+Analyze the market question and current price to make a decision.
+Strategy:
+- Look for momentum and short-term trends.
+- If you have a strong conviction on the price direction in the next 15 minutes, place a trade.
+- Otherwise HOLD.
 """
