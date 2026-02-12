@@ -237,7 +237,7 @@ class AgentMemory(BaseModel):
         # Create atomic snapshots by converting to lists (safe due to GIL)
         obs_list = list(self.observations)[-n:]
         dec_list = list(self.decisions)[-n:]
-        for obs, dec in zip(obs_list, dec_list):
+        for obs, dec in zip(obs_list, dec_list, strict=False):
             history.append(
                 f"Time: {obs.timestamp}\n"
                 f"Markets observed: {len(obs.markets)}\n"

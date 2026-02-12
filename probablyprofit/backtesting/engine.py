@@ -137,7 +137,7 @@ class BacktestEngine:
         self._equity_history_deque.clear()
 
         # Simulate trading over time
-        for i, (markets, timestamp) in enumerate(zip(market_data, timestamps)):
+        for i, (markets, timestamp) in enumerate(zip(market_data, timestamps, strict=False)):
             logger.debug(f"Simulating {timestamp} ({i+1}/{len(market_data)})")
 
             # Create observation

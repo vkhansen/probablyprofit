@@ -121,13 +121,12 @@ class AnthropicAgent(BaseAgent):
             + "\nBased on the above information and your trading strategy, what should you do next?\n"
         )
 
-    def _parse_decision(self, response: str, observation: Observation) -> Decision:
+    def _parse_decision(self, response: str) -> Decision:
         """
         Parse Claude's response into a Decision object with validation.
 
         Args:
             response: Claude's response text
-            observation: Original observation
 
         Returns:
             Decision object
@@ -141,14 +140,13 @@ class AnthropicAgent(BaseAgent):
                 decision = validate_and_parse_decision(response, Decision)
 
                 # Additional clamping if needed
-                if decision.confidence < 0 or decision.confidence > 1:
+                if not 0 <= decision.confidence <= 1:
                     logger.warning(f"Invalid confidence {decision.confidence}, clamping to 0-1")
                     decision.confidence = max(0.0, min(1.0, decision.confidence))
 
-                if decision.price is not None:
-                    if decision.price < 0 or decision.price > 1:
-                        logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
-                        decision.price = max(0.0, min(1.0, decision.price))
+                if decision.price is not None and not 0 <= decision.price <= 1:
+                    logger.warning(f"Invalid price {decision.price}, clamping to 0-1")
+                    decision.price = max(0.0, min(1.0, decision.price))
 
                 return decision
 
@@ -183,7 +181,7 @@ class AnthropicAgent(BaseAgent):
             if isinstance(e, SchemaValidationError):
                 raise
             logger.error(f"Unexpected error parsing decision: {e}")
-            raise AgentException(f"Error parsing decision: {e}")
+            raise AgentException(f"Error parsing decision: {e}") from e
 
     @retry(
         max_attempts=3,
@@ -233,15 +231,15 @@ class AnthropicAgent(BaseAgent):
 
         except (ConnectionError, TimeoutError) as e:
             logger.warning(f"Claude API connection error (will retry): {e}")
-            raise NetworkException(f"Claude API connection error: {e}")
+            raise NetworkException(f"Claude API connection error: {e}") from e
         except Exception as e:
             # Check if it's a retryable Anthropic error
             error_str = str(e).lower()
             if any(x in error_str for x in ["timeout", "connection", "rate limit", "529", "503"]):
                 logger.warning(f"Claude API transient error (will retry): {e}")
-                raise NetworkException(f"Claude API transient error: {e}")
+                raise NetworkException(f"Claude API transient error: {e}") from e
             # Non-retryable error
-            raise AgentException(f"Claude API error: {e}")
+            raise AgentException(f"Claude API error: {e}") from e
 
     async def decide(self, observation: Observation) -> Decision:
         """
@@ -291,7 +289,7 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
             logger.debug(f"Claude response: {response_text[:200]}...")
 
             # Parse into decision
-            decision = self._parse_decision(response_text, observation)
+            decision = self._parse_decision(response_text)
 
             logger.info(
                 f"[{self.name}] Decision: {decision.action} "
@@ -310,7 +308,7 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
             raise
         except Exception as e:
             logger.error(f"Error getting decision from Claude: {e}")
-            raise AgentException(f"Claude decision error: {e}")
+            raise AgentException(f"Claude decision error: {e}") from e
 
     def decide_streaming(
         self,
@@ -378,7 +376,7 @@ If you recommend holding or not trading, explain why and use action: "hold".
                         on_chunk(text)
 
             # Parse into decision
-            decision = self._parse_decision(full_response, observation)
+            decision = self._parse_decision(full_response)
 
             logger.info(
                 f"[{self.name}] Decision: {decision.action} "
@@ -398,4 +396,4 @@ If you recommend holding or not trading, explain why and use action: "hold".
             logger.error(f"Error getting decision from Claude: {e}")
             from probablyprofit.api.exceptions import AgentException
 
-            raise AgentException(f"Claude decision error: {e}")
+            raise AgentException(f"Claude decision error: {e}") from e

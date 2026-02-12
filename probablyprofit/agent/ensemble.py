@@ -239,7 +239,7 @@ class EnsembleAgent(BaseAgent):
         if not decisions:
             return Decision(action="hold", reasoning="No agent decisions available")
 
-        actions = set(d.action for _, d in decisions)
+        actions = {d.action for _, d in decisions}
 
         if len(actions) == 1:
             # Unanimous!

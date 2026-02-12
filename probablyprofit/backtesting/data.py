@@ -86,7 +86,6 @@ class MockDataGenerator:
         Returns:
             List of (List[Market]) snapshots, one per timestep
         """
-        scenarios = []
         timestamps = []
 
         # Generate paths for each market

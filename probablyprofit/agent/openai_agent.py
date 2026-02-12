@@ -170,7 +170,7 @@ class OpenAIAgent(BaseAgent):
                 # For o1, we put everything in the user prompt or use developer role if available.
                 # Currently safe bet is to prepend system instruction to user content.
                 combined_prompt = f"""{self.strategy_prompt}
-                
+
 ---
 MARKET DATA:
 {obs_text}

@@ -46,7 +46,7 @@ class SecureKey:
         self._mask = secrets.token_bytes(len(key_bytes))
 
         # Store XOR'd version (encrypted)
-        self._encrypted = bytes(a ^ b for a, b in zip(key_bytes, self._mask))
+        self._encrypted = bytes(a ^ b for a, b in zip(key_bytes, self._mask, strict=False))
 
         # Clear the original key from this scope
         # (Python doesn't guarantee this, but it helps)
@@ -63,7 +63,7 @@ class SecureKey:
         Note: Caller should use the key immediately and not store it.
         """
         # XOR again to decrypt
-        decrypted = bytes(a ^ b for a, b in zip(self._encrypted, self._mask))
+        decrypted = bytes(a ^ b for a, b in zip(self._encrypted, self._mask, strict=False))
         return "0x" + decrypted.hex()
 
     def __repr__(self) -> str:

@@ -460,7 +460,7 @@ class PolymarketClient:
     ) -> list[Market]:
         """Internal method with retry and circuit breaker."""
         # Get config for retry settings
-        cfg = get_config()
+        get_config()
 
         # Rate limit
         await get_rate_limiter().acquire()
@@ -496,7 +496,7 @@ class PolymarketClient:
             for market_data in data:
                 try:
                     # STRICT FILTER: Skip closed markets
-                    if market_data.get("closed", False) == True:
+                    if market_data.get("closed", False):
                         continue
 
                     # STRICT FILTER: Must have real volume (> $100)
@@ -758,7 +758,7 @@ class PolymarketClient:
             fetched = await gather_with_concurrency(
                 concurrency, *(self.get_market(cid) for cid in uncached_ids)
             )
-            for cid, market in zip(uncached_ids, fetched):
+            for cid, market in zip(uncached_ids, fetched, strict=False):
                 results[cid] = market
 
         # Return in original order
@@ -966,9 +966,9 @@ class PolymarketClient:
             logger.info(f"Cancelling order {order_id}")
             # Use async wrapper for sync method
             if self._async_clob:
-                resp = await self._async_clob.cancel(order_id)
+                await self._async_clob.cancel(order_id)
             else:
-                resp = await run_sync(self.client.cancel, order_id)
+                await run_sync(self.client.cancel, order_id)
             return True
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error cancelling order {order_id}: {e}")

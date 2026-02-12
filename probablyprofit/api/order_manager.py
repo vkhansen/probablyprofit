@@ -9,6 +9,7 @@ Provides comprehensive order lifecycle management:
 """
 
 import asyncio
+import contextlib
 from collections import OrderedDict
 from collections.abc import Callable
 from datetime import datetime
@@ -334,9 +335,8 @@ class OrderBook:
         """Remove an order from the book."""
         async with self._lock:
             order = self._active.pop(order_id, None)
-            if order:
-                if order.market_id in self._by_market:
-                    self._by_market[order.market_id].discard(order_id)
+            if order and order.market_id in self._by_market:
+                self._by_market[order.market_id].discard(order_id)
             return order
 
     async def get_active(self) -> list[ManagedOrder]:
@@ -836,10 +836,8 @@ class OrderManager:
         self._polling = False
         if self._poll_task:
             self._poll_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._poll_task
-            except asyncio.CancelledError:
-                pass
         logger.info("Order polling stopped")
 
     async def _poll_loop(self) -> None:
@@ -868,7 +866,7 @@ class OrderManager:
         # Extract status and fill info (adjust for platform)
         if self.platform == "polymarket":
             exchange_status = exchange_data.get("status", "").lower()
-            filled = float(exchange_data.get("filled_size", 0))
+            float(exchange_data.get("filled_size", 0))
 
             # Map exchange status to our status
             status_map = {
@@ -883,7 +881,6 @@ class OrderManager:
 
         new_status = status_map.get(exchange_status)
         if new_status and new_status != order.status:
-            old_status = order.status
             order.status = new_status
             order.updated_at = datetime.now()
 

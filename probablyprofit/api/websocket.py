@@ -11,6 +11,7 @@ Features automatic reconnection with exponential backoff and jitter.
 """
 
 import asyncio
+import contextlib
 import json
 import random
 from collections.abc import Callable
@@ -211,18 +212,14 @@ class WebSocketClient:
         # Cancel heartbeat task
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._heartbeat_task
-            except asyncio.CancelledError:
-                pass
             self._heartbeat_task = None
 
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
         if self._ws:

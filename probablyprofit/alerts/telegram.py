@@ -80,9 +80,9 @@ class TelegramAlerter:
 
         self.bot_token = bot_token or config.telegram.bot_token
         self.chat_id = chat_id or config.telegram.chat_id
-        self.alert_levels = set(
+        self.alert_levels = {
             AlertLevel(level) for level in (alert_levels or config.telegram.alert_levels)
-        )
+        }
         self.rate_limit = rate_limit_per_minute
 
         # Rate limiting state
