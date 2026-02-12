@@ -757,10 +757,10 @@ def get_quick_status() -> dict[str, Any]:
 def dump_config_to_log(config: Config) -> None:
     """Dump all configuration to debug log, redacting secrets."""
     logger.debug("--- Active Configuration Dump ---")
-    
+
     # Use a redacted dict for safe logging
     config_dict = config.to_dict()
-    
+
     # Manually add sections that might be missed by to_dict
     config_dict["telegram"] = {
         "is_configured": config.telegram.is_configured(),
@@ -771,7 +771,7 @@ def dump_config_to_log(config: Config) -> None:
         "max_decisions": config.agent.memory_max_decisions,
         "max_trades": config.agent.memory_max_trades,
     }
-    
+
     # Convert to YAML for readability, ensuring secrets are not included
     try:
         # We can't just use the standard dumper because the config object
@@ -785,7 +785,7 @@ def dump_config_to_log(config: Config) -> None:
         # Fallback to a simpler, safer dump
         for key, value in config_dict.items():
             logger.debug(f"{key}: {value}")
-            
+
     logger.debug("--- End Configuration Dump ---")
 
 

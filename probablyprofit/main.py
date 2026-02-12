@@ -33,9 +33,7 @@ from probablyprofit.risk.manager import RiskManager
 def parse_args():
     parser = argparse.ArgumentParser(description="ProbablyProfit: AI Trading Bot for Polymarket")
 
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose debug logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debug logging")
 
     # Platform selection
     parser.add_argument(
@@ -224,6 +222,17 @@ async def main():
     # 0. Load Config
     load_dotenv()
     args = parse_args()
+
+    # After parsing args, setup logging level
+    from probablyprofit.utils import logging as logging_utils
+
+    logging_utils.setup_logging(level="DEBUG" if args.verbose else "INFO")
+
+    # Dump config if verbose
+    if args.verbose:
+        from probablyprofit.config import dump_config_to_log, get_config
+
+        dump_config_to_log(get_config())
 
     agent_label = args.agent
     if args.agent == "ensemble":
