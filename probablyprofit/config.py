@@ -69,17 +69,9 @@ class APIConfig:
     positions_cache_max_size: int = 200
 
     # Market filtering
-    market_whitelist_keywords: List[str] = field(
-        default_factory=lambda: [
-            "sol-updown-15m",
-            "eth-updown-15m",
-            "xrp-updown-15m",
-            "btc-updown-15m",
-            "btc-updown-5m",
-        ]
-    )
+    market_whitelist_keywords: List[str] = field(default_factory=list)
     market_blacklist_keywords: List[str] = field(default_factory=list)
-    market_tag_slug: Optional[str] = "crypto"
+    market_tag_slug: Optional[str] = None
     market_duration_max_minutes: Optional[int] = None
 
 
