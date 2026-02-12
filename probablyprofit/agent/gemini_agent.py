@@ -6,8 +6,7 @@ Updated to use the new google-genai SDK.
 """
 
 import asyncio
-import json
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -18,13 +17,11 @@ from probablyprofit.api.exceptions import (
     AgentException,
     NetworkException,
     SchemaValidationError,
-    ValidationException,
 )
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.resilience import retry
 from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
-    validate_confidence,
     validate_strategy,
     wrap_strategy_safely,
 )
@@ -60,7 +57,7 @@ class GeminiAgent(BaseAgent):
         model: str = "gemini-2.0-flash",
         name: str = "GeminiAgent",
         loop_interval: int = 60,
-        strategy: Optional[Any] = None,
+        strategy: Any | None = None,
         dry_run: bool = False,
     ):
         super().__init__(

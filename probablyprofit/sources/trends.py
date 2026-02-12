@@ -6,8 +6,7 @@ Rising search interest often precedes price movements.
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 import httpx
 from loguru import logger
@@ -23,7 +22,7 @@ class TrendData(BaseModel):
     peak_interest: int
     trend_direction: str  # "rising", "falling", "stable"
     percent_change: float  # Change from average
-    related_queries: List[str] = []
+    related_queries: list[str] = []
     timestamp: datetime = datetime.now()
 
     @property
@@ -41,7 +40,7 @@ class TrendsSentiment(BaseModel):
     """Aggregated trends sentiment for a topic."""
 
     topic: str
-    keywords: List[TrendData] = []
+    keywords: list[TrendData] = []
     overall_trend: str = "stable"  # rising, falling, stable, spiking
     interest_score: float = 0.0  # 0-100 normalized
     momentum: float = 0.0  # Rate of change
@@ -192,7 +191,7 @@ class GoogleTrendsClient:
         self,
         keyword: str,
         geo: str = "US",
-    ) -> Optional[TrendData]:
+    ) -> TrendData | None:
         """Get trend data using daily trends API."""
         try:
             # Use the realtime trends endpoint
@@ -250,7 +249,7 @@ class GoogleTrendsClient:
         self,
         geo: str = "US",
         category: str = "all",
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Get currently trending searches.
 
@@ -298,7 +297,7 @@ class GoogleTrendsClient:
     async def get_sentiment(
         self,
         topic: str,
-        additional_keywords: Optional[List[str]] = None,
+        additional_keywords: list[str] | None = None,
     ) -> TrendsSentiment:
         """
         Get aggregated trends sentiment for a topic.
@@ -363,7 +362,7 @@ class GoogleTrendsClient:
             timestamp=datetime.now(),
         )
 
-    def _extract_keywords(self, topic: str) -> List[str]:
+    def _extract_keywords(self, topic: str) -> list[str]:
         """Extract searchable keywords from topic."""
         import re
 

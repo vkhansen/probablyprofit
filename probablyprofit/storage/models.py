@@ -12,7 +12,6 @@ PERFORMANCE OPTIMIZATION:
 """
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Index
 from sqlmodel import Field, SQLModel
@@ -33,10 +32,10 @@ class TradeRecord(SQLModel, table=True):
         Index("ix_trades_side_timestamp", "side", "timestamp"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    order_id: Optional[str] = Field(default=None, index=True)
+    id: int | None = Field(default=None, primary_key=True)
+    order_id: str | None = Field(default=None, index=True)
     market_id: str = Field(index=True)
-    market_question: Optional[str] = Field(default=None, index=True)  # Searchable market name
+    market_question: str | None = Field(default=None, index=True)  # Searchable market name
     outcome: str
     side: str  # BUY/SELL
     size: float
@@ -46,11 +45,11 @@ class TradeRecord(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    observation_id: Optional[int] = Field(default=None)
-    decision_id: Optional[int] = Field(default=None)
+    observation_id: int | None = Field(default=None)
+    decision_id: int | None = Field(default=None)
 
     # P&L tracking
-    realized_pnl: Optional[float] = None
+    realized_pnl: float | None = None
     fees: float = 0.0
 
 
@@ -59,7 +58,7 @@ class ObservationRecord(SQLModel, table=True):
 
     __tablename__ = "observations"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
     balance: float
     num_markets: int
@@ -72,8 +71,8 @@ class ObservationRecord(SQLModel, table=True):
     metadata_json: str = "{}"
 
     # Intelligence layer data
-    news_context: Optional[str] = None
-    sentiment_summary: Optional[str] = None
+    news_context: str | None = None
+    sentiment_summary: str | None = None
 
 
 class DecisionRecord(SQLModel, table=True):
@@ -91,19 +90,19 @@ class DecisionRecord(SQLModel, table=True):
         Index("ix_decisions_action_timestamp", "action", "timestamp"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
     action: str  # buy, sell, hold, close
-    market_id: Optional[str] = Field(default=None, index=True)
-    outcome: Optional[str] = None
+    market_id: str | None = Field(default=None, index=True)
+    outcome: str | None = None
     size: float = 0.0
-    price: Optional[float] = None
+    price: float | None = None
     reasoning: str = ""
     confidence: float = 0.5
     metadata_json: str = "{}"
 
     # Link to observation
-    observation_id: Optional[int] = Field(default=None)
+    observation_id: int | None = Field(default=None)
 
     # Agent info
     agent_name: str = "unknown"
@@ -119,7 +118,7 @@ class PositionSnapshot(SQLModel, table=True):
     # - (market_id, timestamp): Position history for specific market
     __table_args__ = (Index("ix_position_snapshots_market_timestamp", "market_id", "timestamp"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
     market_id: str = Field(index=True)
     outcome: str
@@ -134,7 +133,7 @@ class BalanceSnapshot(SQLModel, table=True):
 
     __tablename__ = "balance_snapshots"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
     balance: float
     total_exposure: float
@@ -148,7 +147,7 @@ class PerformanceMetric(SQLModel, table=True):
 
     __tablename__ = "performance_metrics"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     date: datetime = Field(default_factory=datetime.now, index=True)
 
     # Returns
@@ -173,7 +172,7 @@ class BacktestRun(SQLModel, table=True):
 
     __tablename__ = "backtest_runs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str
     strategy: str
     agent_type: str
@@ -203,7 +202,7 @@ class RiskStateRecord(SQLModel, table=True):
         Index("ix_risk_state_agent_timestamp", "agent_name", "timestamp"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.now, index=True)
 
     # Core state

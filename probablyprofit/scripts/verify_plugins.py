@@ -12,13 +12,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 import asyncio
 
-from loguru import logger
-
 from probablyprofit.plugins import PluginType, registry
 from probablyprofit.plugins.examples import (
-    MomentumStrategyPlugin,
-    SlackNotificationPlugin,
-    WhaleTrackerPlugin,
     list_example_plugins,
 )
 from probablyprofit.plugins.hooks import Hook, hooks

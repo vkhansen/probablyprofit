@@ -10,10 +10,10 @@ Provides comprehensive order lifecycle management:
 
 import asyncio
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -23,8 +23,6 @@ from probablyprofit.api.exceptions import (
     OrderException,
     OrderModifyError,
     OrderNotFoundError,
-    PartialFillError,
-    ValidationException,
 )
 from probablyprofit.config import get_config
 
@@ -82,7 +80,7 @@ class ManagedOrder(BaseModel):
     """
 
     # Core order fields
-    order_id: Optional[str] = None
+    order_id: str | None = None
     client_order_id: str = Field(
         default_factory=lambda: f"pp_{int(datetime.now().timestamp() * 1000)}"
     )
@@ -100,24 +98,24 @@ class ManagedOrder(BaseModel):
 
     # Status
     status: OrderStatus = OrderStatus.PENDING
-    status_message: Optional[str] = None
+    status_message: str | None = None
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
-    submitted_at: Optional[datetime] = None
-    filled_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
+    submitted_at: datetime | None = None
+    filled_at: datetime | None = None
+    cancelled_at: datetime | None = None
     updated_at: datetime = Field(default_factory=datetime.now)
 
     # Fills history
-    fills: List[Fill] = Field(default_factory=list)
+    fills: list[Fill] = Field(default_factory=list)
 
     # Fees and costs
     total_fees: float = 0.0
 
     # Metadata
     platform: str = "polymarket"
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize remaining_size after creation."""
@@ -213,7 +211,7 @@ class ManagedOrder(BaseModel):
         self.status_message = reason
         self.updated_at = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "order_id": self.order_id,
@@ -255,16 +253,16 @@ class OrderBook:
         self._lock = asyncio.Lock()
 
         # Active orders by order_id
-        self._active: Dict[str, ManagedOrder] = {}
+        self._active: dict[str, ManagedOrder] = {}
 
         # Client order ID to exchange order ID mapping
-        self._client_to_exchange: Dict[str, str] = {}
+        self._client_to_exchange: dict[str, str] = {}
 
         # Completed orders (LRU cache)
         self._history: OrderedDict[str, ManagedOrder] = OrderedDict()
 
         # Orders by market
-        self._by_market: Dict[str, Set[str]] = {}
+        self._by_market: dict[str, set[str]] = {}
 
     async def add(self, order: ManagedOrder) -> None:
         """Add an order to the book."""
@@ -283,7 +281,7 @@ class OrderBook:
 
             logger.debug(f"Added order {key} to book (active: {len(self._active)})")
 
-    async def get(self, order_id: str) -> Optional[ManagedOrder]:
+    async def get(self, order_id: str) -> ManagedOrder | None:
         """Get order by ID (checks both exchange and client IDs)."""
         async with self._lock:
             # Try direct lookup
@@ -332,7 +330,7 @@ class OrderBook:
             else:
                 self._active[key] = order
 
-    async def remove(self, order_id: str) -> Optional[ManagedOrder]:
+    async def remove(self, order_id: str) -> ManagedOrder | None:
         """Remove an order from the book."""
         async with self._lock:
             order = self._active.pop(order_id, None)
@@ -341,12 +339,12 @@ class OrderBook:
                     self._by_market[order.market_id].discard(order_id)
             return order
 
-    async def get_active(self) -> List[ManagedOrder]:
+    async def get_active(self) -> list[ManagedOrder]:
         """Get all active orders."""
         async with self._lock:
             return list(self._active.values())
 
-    async def get_by_market(self, market_id: str) -> List[ManagedOrder]:
+    async def get_by_market(self, market_id: str) -> list[ManagedOrder]:
         """Get all orders for a specific market."""
         async with self._lock:
             order_ids = self._by_market.get(market_id, set())
@@ -356,7 +354,7 @@ class OrderBook:
                     orders.append(self._active[oid])
             return orders
 
-    async def get_history(self, limit: int = 100) -> List[ManagedOrder]:
+    async def get_history(self, limit: int = 100) -> list[ManagedOrder]:
         """Get recent order history."""
         async with self._lock:
             items = list(self._history.values())[-limit:]
@@ -410,14 +408,14 @@ class OrderManager:
         self.order_book = OrderBook(max_history=get_config().api.positions_cache_max_size)
 
         # Event callbacks
-        self._on_fill: List[FillCallback] = []
-        self._on_status_change: List[OrderCallback] = []
-        self._on_complete: List[OrderCallback] = []
-        self._on_partial_fill_timeout: List[OrderCallback] = []
+        self._on_fill: list[FillCallback] = []
+        self._on_status_change: list[OrderCallback] = []
+        self._on_complete: list[OrderCallback] = []
+        self._on_partial_fill_timeout: list[OrderCallback] = []
 
         # Polling state
         self._polling = False
-        self._poll_task: Optional[asyncio.Task] = None
+        self._poll_task: asyncio.Task | None = None
         self._poll_interval = 5.0  # seconds
 
     def on_fill(self, callback: FillCallback) -> None:
@@ -436,7 +434,7 @@ class OrderManager:
         """Register callback for partial fill timeout events."""
         self._on_partial_fill_timeout.append(callback)
 
-    async def check_partial_fill_timeouts(self) -> List[ManagedOrder]:
+    async def check_partial_fill_timeouts(self) -> list[ManagedOrder]:
         """
         Check for orders that have been partially filled for too long.
 
@@ -495,7 +493,7 @@ class OrderManager:
         size: float,
         price: float,
         order_type: OrderType = OrderType.LIMIT,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ManagedOrder:
         """
         Submit a new order.
@@ -621,7 +619,7 @@ class OrderManager:
             logger.error(f"Cancel failed for {order_id}: {e}")
             raise OrderCancelError(f"Cancellation failed: {e}")
 
-    async def cancel_all(self, market_id: Optional[str] = None) -> int:
+    async def cancel_all(self, market_id: str | None = None) -> int:
         """
         Cancel all active orders, optionally filtered by market.
 
@@ -653,8 +651,8 @@ class OrderManager:
     async def modify_order(
         self,
         order_id: str,
-        new_price: Optional[float] = None,
-        new_size: Optional[float] = None,
+        new_price: float | None = None,
+        new_size: float | None = None,
     ) -> ManagedOrder:
         """
         Modify an active order (cancel and replace).
@@ -712,7 +710,7 @@ class OrderManager:
         order_id: str,
         fill_size: float,
         fill_price: float,
-        fill_id: Optional[str] = None,
+        fill_id: str | None = None,
         fee: float = 0.0,
     ) -> ManagedOrder:
         """
@@ -758,23 +756,23 @@ class OrderManager:
 
         return order
 
-    async def get_order(self, order_id: str) -> Optional[ManagedOrder]:
+    async def get_order(self, order_id: str) -> ManagedOrder | None:
         """Get order by ID."""
         return await self.order_book.get(order_id)
 
-    async def get_active_orders(self) -> List[ManagedOrder]:
+    async def get_active_orders(self) -> list[ManagedOrder]:
         """Get all active orders."""
         return await self.order_book.get_active()
 
-    async def get_orders_for_market(self, market_id: str) -> List[ManagedOrder]:
+    async def get_orders_for_market(self, market_id: str) -> list[ManagedOrder]:
         """Get orders for a specific market."""
         return await self.order_book.get_by_market(market_id)
 
-    async def get_order_history(self, limit: int = 100) -> List[ManagedOrder]:
+    async def get_order_history(self, limit: int = 100) -> list[ManagedOrder]:
         """Get recent order history."""
         return await self.order_book.get_history(limit)
 
-    async def reconcile(self) -> Dict[str, Any]:
+    async def reconcile(self) -> dict[str, Any]:
         """
         Reconcile local order book with exchange.
 
@@ -864,7 +862,7 @@ class OrderManager:
     async def _update_from_exchange(
         self,
         order: ManagedOrder,
-        exchange_data: Dict[str, Any],
+        exchange_data: dict[str, Any],
     ) -> None:
         """Update order from exchange data."""
         # Extract status and fill info (adjust for platform)
@@ -935,7 +933,7 @@ class OrderManager:
 
 
 # Singleton order managers per platform
-_order_managers: Dict[str, OrderManager] = {}
+_order_managers: dict[str, OrderManager] = {}
 
 
 def get_order_manager(platform: str = "polymarket", client: Any = None) -> OrderManager:

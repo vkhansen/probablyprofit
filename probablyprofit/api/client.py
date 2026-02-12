@@ -14,9 +14,9 @@ Includes retry logic and circuit breakers for resilience.
 import asyncio
 import json
 from collections import OrderedDict
+from collections.abc import Callable, Coroutine
 from datetime import datetime
-from decimal import Decimal
-from typing import Any, Callable, Coroutine, Dict, List, Optional, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -54,17 +54,16 @@ from probablyprofit.api.exceptions import (
     ValidationException,
 )
 from probablyprofit.config import get_config
-from probablyprofit.utils.cache import AsyncTTLCache, market_cache, price_cache
-from probablyprofit.utils.resilience import CircuitBreaker, RateLimiter, retry
+from probablyprofit.utils.cache import AsyncTTLCache
+from probablyprofit.utils.resilience import CircuitBreaker, RateLimiter
 from probablyprofit.utils.validators import (
-    validate_non_negative,
     validate_positive,
     validate_price,
     validate_side,
 )
 
 
-def _get_circuit_breakers() -> Dict[str, CircuitBreaker]:
+def _get_circuit_breakers() -> dict[str, CircuitBreaker]:
     """Get circuit breakers with config values (lazy initialization)."""
     cfg = get_config()
     return {
@@ -152,7 +151,7 @@ class LRUCache(OrderedDict):
 async def gather_with_concurrency(
     n: int,
     *coros: Coroutine[Any, Any, T],
-) -> List[T]:
+) -> list[T]:
     """
     Run coroutines with limited concurrency to prevent overwhelming the API.
 
@@ -176,11 +175,11 @@ async def gather_with_concurrency(
 
 
 async def batch_fetch(
-    items: List[Any],
+    items: list[Any],
     fetch_fn: Callable[[Any], Coroutine[Any, Any, T]],
     batch_size: int = 10,
     concurrency: int = 5,
-) -> List[T]:
+) -> list[T]:
     """
     Fetch items in batches with controlled concurrency.
 
@@ -195,7 +194,7 @@ async def batch_fetch(
 
     Performance: Batches API calls to reduce total latency by ~40%.
     """
-    results: List[T] = []
+    results: list[T] = []
 
     for i in range(0, len(items), batch_size):
         batch = items[i : i + batch_size]
@@ -212,22 +211,22 @@ class Market(BaseModel):
 
     condition_id: str
     question: str
-    description: Optional[str] = None
+    description: str | None = None
     end_date: datetime
-    outcomes: List[str]
-    outcome_prices: List[float]
+    outcomes: list[str]
+    outcome_prices: list[float]
     volume: float
     liquidity: float
     active: bool = True
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class Order(BaseModel):
     """Represents an order."""
 
-    order_id: Optional[str] = None
+    order_id: str | None = None
     market_id: str
-    market_question: Optional[str] = None  # For searchable trade history
+    market_question: str | None = None  # For searchable trade history
     outcome: str
     side: str  # BUY or SELL
     size: float
@@ -271,7 +270,7 @@ class PolymarketClient:
 
     def __init__(
         self,
-        private_key: Optional[str] = None,
+        private_key: str | None = None,
         chain_id: int = 137,
         testnet: bool = False,
     ):
@@ -411,7 +410,7 @@ class PolymarketClient:
         self._initialized = True
         logger.info("PolymarketClient async initialization complete")
 
-    def _get_auth_headers(self) -> Dict[str, str]:
+    def _get_auth_headers(self) -> dict[str, str]:
         """Get authentication headers for API requests."""
         headers = {}
         if self._api_creds:
@@ -429,9 +428,9 @@ class PolymarketClient:
         active: bool = True,
         limit: int = 100,
         offset: int = 0,
-        tag_id: Optional[int] = None,
-        end_date_max: Optional[str] = None,
-    ) -> List[Market]:
+        tag_id: int | None = None,
+        end_date_max: str | None = None,
+    ) -> list[Market]:
         """
         Fetch available markets from Gamma API.
         Args:
@@ -456,9 +455,9 @@ class PolymarketClient:
         closed: bool,
         limit: int,
         offset: int,
-        tag_id: Optional[int] = None,
-        end_date_max: Optional[str] = None,
-    ) -> List[Market]:
+        tag_id: int | None = None,
+        end_date_max: str | None = None,
+    ) -> list[Market]:
         """Internal method with retry and circuit breaker."""
         # Get config for retry settings
         cfg = get_config()
@@ -608,7 +607,7 @@ class PolymarketClient:
             logger.error(f"Data parsing error fetching markets: {e}")
             raise APIException(f"Failed to parse market data: {e}")
 
-    async def get_market(self, condition_id: str) -> Optional[Market]:
+    async def get_market(self, condition_id: str) -> Market | None:
         """
         Get details for a specific market.
 
@@ -666,7 +665,7 @@ class PolymarketClient:
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch tags from the Gamma API.
 
@@ -694,7 +693,7 @@ class PolymarketClient:
             logger.error(f"Invalid JSON in tags response: {e}")
             return []
 
-    async def get_orderbook(self, condition_id: str, outcome: str) -> Dict[str, Any]:
+    async def get_orderbook(self, condition_id: str, outcome: str) -> dict[str, Any]:
         """
         Get orderbook for a market outcome.
 
@@ -725,9 +724,9 @@ class PolymarketClient:
 
     async def get_markets_batch(
         self,
-        condition_ids: List[str],
+        condition_ids: list[str],
         concurrency: int = 5,
-    ) -> List[Optional[Market]]:
+    ) -> list[Market | None]:
         """
         Fetch multiple markets in parallel with controlled concurrency.
 
@@ -744,8 +743,8 @@ class PolymarketClient:
             return []
 
         # Check cache first and filter out already cached markets
-        results: Dict[str, Optional[Market]] = {}
-        uncached_ids: List[str] = []
+        results: dict[str, Market | None] = {}
+        uncached_ids: list[str] = []
 
         for cid in condition_ids:
             cached = self._market_cache.get(cid)
@@ -767,9 +766,9 @@ class PolymarketClient:
 
     async def get_orderbooks_batch(
         self,
-        market_outcomes: List[tuple[str, str]],
+        market_outcomes: list[tuple[str, str]],
         concurrency: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch multiple orderbooks in parallel with controlled concurrency.
 
@@ -791,9 +790,9 @@ class PolymarketClient:
 
     async def refresh_market_prices_batch(
         self,
-        condition_ids: List[str],
+        condition_ids: list[str],
         concurrency: int = 10,
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         """
         Refresh prices for multiple markets in parallel.
 
@@ -818,7 +817,7 @@ class PolymarketClient:
         size: float,
         price: float,
         order_type: str = "LIMIT",
-    ) -> Optional[Order]:
+    ) -> Order | None:
         """
         Place an order with validation and resilience.
 
@@ -981,7 +980,7 @@ class PolymarketClient:
             logger.error(f"Client error cancelling order {order_id}: {e}")
             return False
 
-    async def cancel_all_orders(self, market_id: Optional[str] = None) -> int:
+    async def cancel_all_orders(self, market_id: str | None = None) -> int:
         """
         Cancel all open orders, optionally filtered by market.
 
@@ -1013,7 +1012,7 @@ class PolymarketClient:
             logger.error(f"Network error cancelling orders: {e}")
             return 0
 
-    async def get_open_orders(self, market_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_open_orders(self, market_id: str | None = None) -> list[dict[str, Any]]:
         """
         Get all open orders.
 
@@ -1030,7 +1029,7 @@ class PolymarketClient:
         try:
             await get_rate_limiter().acquire()
 
-            params: Dict[str, Any] = {}
+            params: dict[str, Any] = {}
             if market_id:
                 params["market"] = market_id
 
@@ -1056,7 +1055,7 @@ class PolymarketClient:
             logger.error(f"Invalid JSON in orders response: {e}")
             return []
 
-    async def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+    async def get_order(self, order_id: str) -> dict[str, Any] | None:
         """
         Get order details by ID.
 
@@ -1095,10 +1094,10 @@ class PolymarketClient:
 
     async def get_fills(
         self,
-        order_id: Optional[str] = None,
-        market_id: Optional[str] = None,
+        order_id: str | None = None,
+        market_id: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get trade fills/executions.
 
@@ -1117,7 +1116,7 @@ class PolymarketClient:
         try:
             await get_rate_limiter().acquire()
 
-            params: Dict[str, Any] = {"limit": limit}
+            params: dict[str, Any] = {"limit": limit}
             if order_id:
                 params["order_id"] = order_id
             if market_id:
@@ -1145,7 +1144,7 @@ class PolymarketClient:
             logger.error(f"Invalid JSON in fills response: {e}")
             return []
 
-    async def get_positions(self) -> List[Position]:
+    async def get_positions(self) -> list[Position]:
         """
         Get current positions from the CLOB API.
 

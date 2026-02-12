@@ -7,9 +7,6 @@ A deterministic agent that doesn't require API calls, useful for:
 - CI/CD testing
 """
 
-from datetime import datetime
-from typing import Optional
-
 from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
@@ -50,8 +47,8 @@ class MockAgent(BaseAgent):
             return Decision(action="hold", market_id="", reasoning="No markets available")
 
         # Find best opportunity
-        best_buy: Optional[Market] = None
-        best_sell: Optional[Market] = None
+        best_buy: Market | None = None
+        best_sell: Market | None = None
 
         for market in observation.markets:
             if not market.outcome_prices:

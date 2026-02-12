@@ -10,11 +10,12 @@ PERFORMANCE OPTIMIZATION:
 
 import asyncio
 import json
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -93,7 +94,7 @@ class AsyncConnectionPool:
         if not self._initialized:
             await self.initialize()
 
-        conn: Optional[aiosqlite.Connection] = None
+        conn: aiosqlite.Connection | None = None
 
         try:
             # Try to get from pool without blocking
@@ -149,7 +150,7 @@ class MarketSnapshot:
     no_price: float
     volume: float
     liquidity: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -187,7 +188,7 @@ class HistoricalDataStore:
 
     def __init__(
         self,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
         retention_days: int = 365,
         pool_size: int = 5,
     ):
@@ -309,7 +310,7 @@ class HistoricalDataStore:
         no_price: float,
         volume: float = 0.0,
         liquidity: float = 0.0,
-        metadata: Optional[Dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """
         Record a market snapshot.
@@ -384,9 +385,9 @@ class HistoricalDataStore:
         size: float,
         price: float,
         pnl: float = 0.0,
-        agent_name: Optional[str] = None,
-        strategy: Optional[str] = None,
-        metadata: Optional[Dict] = None,
+        agent_name: str | None = None,
+        strategy: str | None = None,
+        metadata: dict | None = None,
     ) -> None:
         """Record a trade."""
         if not self._initialized:
@@ -420,7 +421,7 @@ class HistoricalDataStore:
         condition_id: str,
         days: int = 30,
         interval_minutes: int = 60,
-    ) -> List[PricePoint]:
+    ) -> list[PricePoint]:
         """
         Get price history for a market.
 
@@ -486,11 +487,11 @@ class HistoricalDataStore:
 
     async def get_snapshots(
         self,
-        condition_id: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        condition_id: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 1000,
-    ) -> List[MarketSnapshot]:
+    ) -> list[MarketSnapshot]:
         """
         Get market snapshots.
 
@@ -552,11 +553,11 @@ class HistoricalDataStore:
 
     async def get_trade_history(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_name: Optional[str] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_name: str | None = None,
         limit: int = 1000,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get trade history."""
         if not self._initialized:
             await self.initialize()
@@ -591,7 +592,7 @@ class HistoricalDataStore:
         condition_id: str,
         interval: str = "1h",
         days: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get OHLC (Open-High-Low-Close) data.
 
@@ -683,7 +684,7 @@ class HistoricalDataStore:
 
         return total_deleted
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get storage statistics."""
         if not self._initialized:
             await self.initialize()
@@ -720,7 +721,7 @@ class HistoricalDataStore:
 
 
 # Global instance
-_historical_store: Optional[HistoricalDataStore] = None
+_historical_store: HistoricalDataStore | None = None
 
 
 async def get_historical_store() -> HistoricalDataStore:

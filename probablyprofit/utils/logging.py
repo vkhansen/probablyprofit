@@ -7,12 +7,13 @@ like API keys, private keys, and other secrets from log output.
 
 import re
 import sys
-from typing import Any, Dict, List, Optional, Pattern
+from re import Pattern
+from typing import Any
 
 from loguru import logger
 
 # Patterns that look like secrets (compiled for performance)
-SECRET_PATTERNS: List[Pattern] = [
+SECRET_PATTERNS: list[Pattern] = [
     # API keys (common formats)
     re.compile(r"sk-[a-zA-Z0-9]{20,}"),  # OpenAI
     re.compile(r"sk-ant-[a-zA-Z0-9\-]{20,}"),  # Anthropic
@@ -135,7 +136,7 @@ def redact_string(text: str, show_chars: int = 4) -> str:
     return result
 
 
-def redact_dict(data: Dict[str, Any], depth: int = 0, max_depth: int = 10) -> Dict[str, Any]:
+def redact_dict(data: dict[str, Any], depth: int = 0, max_depth: int = 10) -> dict[str, Any]:
     """
     Redact sensitive values from a dictionary.
 
@@ -186,7 +187,7 @@ def redact_dict(data: Dict[str, Any], depth: int = 0, max_depth: int = 10) -> Di
 class SecretFilter:
     """Loguru filter that redacts secrets from log messages."""
 
-    def __call__(self, record: Dict[str, Any]) -> bool:
+    def __call__(self, record: dict[str, Any]) -> bool:
         """
         Filter log record, redacting any secrets.
 
@@ -209,7 +210,7 @@ class SecretFilter:
 
 def setup_logging(
     level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     redact_secrets: bool = True,
 ) -> None:
     """

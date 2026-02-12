@@ -18,7 +18,7 @@ import hashlib
 import os
 import secrets as python_secrets
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -51,7 +51,7 @@ def _get_keyring() -> Any:
         return None
 
 
-def _get_cryptography() -> Optional[Dict[str, Any]]:
+def _get_cryptography() -> dict[str, Any] | None:
     """Lazy import cryptography to handle optional dependency."""
     try:
         from cryptography.fernet import Fernet
@@ -75,7 +75,7 @@ class SecretsManager:
     Writing goes to keyring if available, otherwise encrypted file.
     """
 
-    def __init__(self, master_password: Optional[str] = None):
+    def __init__(self, master_password: str | None = None):
         """
         Initialize secrets manager.
 
@@ -86,7 +86,7 @@ class SecretsManager:
         self._keyring = _get_keyring()
         self._crypto = _get_cryptography()
         self._master_password = master_password
-        self._cache: Dict[str, str] = {}  # In-memory cache
+        self._cache: dict[str, str] = {}  # In-memory cache
         self._fernet = None
 
         # Check available backends
@@ -188,7 +188,7 @@ class SecretsManager:
         """Convert secret key to environment variable name."""
         return key.upper()
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         """
         Get a secret by key.
 
@@ -293,7 +293,7 @@ class SecretsManager:
 
         return success
 
-    def _read_from_encrypted_file(self, key: str) -> Optional[str]:
+    def _read_from_encrypted_file(self, key: str) -> str | None:
         """Read a secret from encrypted file storage."""
         if not ENCRYPTED_SECRETS_FILE.exists():
             return None
@@ -377,20 +377,20 @@ class SecretsManager:
             logger.debug(f"Failed to delete from encrypted file: {e}")
             return False
 
-    def _serialize(self, data: Dict[str, str]) -> bytes:
+    def _serialize(self, data: dict[str, str]) -> bytes:
         """Serialize secrets dict to bytes."""
         import json
 
         return json.dumps(data).encode("utf-8")
 
-    def _deserialize(self, data: bytes) -> Dict[str, str]:
+    def _deserialize(self, data: bytes) -> dict[str, str]:
         """Deserialize bytes to secrets dict."""
         import json
 
-        result: Dict[str, str] = json.loads(data.decode("utf-8"))
+        result: dict[str, str] = json.loads(data.decode("utf-8"))
         return result
 
-    def get_all(self) -> Dict[str, Optional[str]]:
+    def get_all(self) -> dict[str, str | None]:
         """Get all known secrets."""
         return {key: self.get(key) for key in SECRET_KEYS}
 
@@ -398,7 +398,7 @@ class SecretsManager:
         """Clear in-memory cache of secrets."""
         self._cache.clear()
 
-    def migrate_from_plaintext(self, plaintext_creds: Dict[str, str]) -> int:
+    def migrate_from_plaintext(self, plaintext_creds: dict[str, str]) -> int:
         """
         Migrate credentials from plaintext storage to secure storage.
 
@@ -417,7 +417,7 @@ class SecretsManager:
         return migrated
 
     @property
-    def backend_info(self) -> Dict[str, Any]:
+    def backend_info(self) -> dict[str, Any]:
         """Get info about available backends."""
         return {
             "keyring_available": self._keyring_available,
@@ -429,7 +429,7 @@ class SecretsManager:
 
 
 # Global singleton
-_secrets_manager: Optional[SecretsManager] = None
+_secrets_manager: SecretsManager | None = None
 
 
 def get_secrets_manager() -> SecretsManager:
@@ -440,7 +440,7 @@ def get_secrets_manager() -> SecretsManager:
     return _secrets_manager
 
 
-def get_secret(key: str) -> Optional[str]:
+def get_secret(key: str) -> str | None:
     """Convenience function to get a secret."""
     return get_secrets_manager().get(key)
 

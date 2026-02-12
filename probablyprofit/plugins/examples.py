@@ -4,7 +4,7 @@ Example Plugins
 Sample plugins demonstrating the plugin architecture.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 from loguru import logger
 
@@ -31,7 +31,7 @@ class SlackNotificationPlugin(OutputPlugin):
         super().__init__(config)
         self.webhook_url = webhook_url or config.options.get("webhook_url", "") if config else ""
 
-    async def send(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def send(self, event_type: str, data: dict[str, Any]) -> None:
         """Send notification to Slack."""
         if not self.webhook_url:
             logger.warning("Slack webhook URL not configured")
@@ -63,7 +63,7 @@ class WhaleTrackerPlugin(DataSourcePlugin):
         super().__init__(config)
         self.min_bet_size = min_bet_size
 
-    async def fetch(self, query: str) -> Dict[str, Any]:
+    async def fetch(self, query: str) -> dict[str, Any]:
         """Fetch whale activity for a market."""
         # Mock implementation
         return {
@@ -101,7 +101,7 @@ You are a momentum trader. Your strategy:
 Focus on markets with high volume and clear directional movement.
 """
 
-    def filter_markets(self, markets: List[Any]) -> List[Any]:
+    def filter_markets(self, markets: list[Any]) -> list[Any]:
         """Filter to markets with sufficient volume."""
         return [m for m in markets if getattr(m, "volume", 0) > 1000]
 
@@ -133,6 +133,6 @@ async def alert_risk_breach(data):
 # ============================================================================
 
 
-def list_example_plugins() -> Dict[str, List[str]]:
+def list_example_plugins() -> dict[str, list[str]]:
     """List all example plugins that get registered."""
     return registry.list_plugins()

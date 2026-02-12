@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from probablyprofit.api.client import PolymarketClient

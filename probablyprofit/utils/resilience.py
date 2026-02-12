@@ -8,10 +8,11 @@ to make the bot bulletproof against API failures.
 import asyncio
 import random
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, Set, Type, TypeVar, Union, cast
+from typing import Any, Optional, TypeVar
 
 from loguru import logger
 
@@ -80,8 +81,8 @@ def retry(
     max_attempts: int = 3,
     base_delay: float = 1.0,
     max_delay: float = 60.0,
-    retryable_exceptions: Optional[tuple] = None,
-    on_retry: Optional[Callable[[Exception, int], None]] = None,
+    retryable_exceptions: tuple | None = None,
+    on_retry: Callable[[Exception, int], None] | None = None,
 ) -> Callable:
     """
     Decorator for retrying async functions with exponential backoff.
@@ -110,7 +111,7 @@ def retry(
     def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_exception: Optional[Exception] = None
+            last_exception: Exception | None = None
 
             for attempt in range(config.max_attempts):
                 try:
@@ -232,7 +233,7 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._lock = asyncio.Lock()
 
         # Register this breaker
@@ -435,8 +436,8 @@ class RateLimiter:
 def resilient(
     retry_attempts: int = 3,
     retry_delay: float = 1.0,
-    circuit_breaker: Optional[str] = None,
-    rate_limit_calls: Optional[int] = None,
+    circuit_breaker: str | None = None,
+    rate_limit_calls: int | None = None,
     rate_limit_period: float = 1.0,
 ) -> Callable:
     """

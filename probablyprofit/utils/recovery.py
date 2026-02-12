@@ -7,11 +7,10 @@ the bot can resume after unexpected failures.
 
 import asyncio
 import json
-import os
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -27,12 +26,12 @@ class AgentCheckpoint:
 
     # Last known state
     last_balance: float
-    last_observation_time: Optional[str]
-    last_decision_time: Optional[str]
-    last_action: Optional[str]
+    last_observation_time: str | None
+    last_decision_time: str | None
+    last_action: str | None
 
     # Pending work
-    pending_decisions: List[Dict[str, Any]]
+    pending_decisions: list[dict[str, Any]]
 
     # Stats
     total_trades: int
@@ -40,7 +39,7 @@ class AgentCheckpoint:
     failed_trades: int
 
     # Error tracking
-    last_error: Optional[str]
+    last_error: str | None
     error_count: int
     consecutive_errors: int
 
@@ -49,11 +48,11 @@ class AgentCheckpoint:
     loop_interval: int
     sizing_method: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentCheckpoint":
+    def from_dict(cls, data: dict[str, Any]) -> "AgentCheckpoint":
         return cls(**data)
 
 
@@ -98,11 +97,11 @@ class RecoveryManager:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         # Track loop counts for interval-based checkpointing
-        self._loop_counts: Dict[str, int] = {}
+        self._loop_counts: dict[str, int] = {}
 
         logger.info(f"[Recovery] Initialized with checkpoint dir: {self.checkpoint_dir}")
 
-    def _get_checkpoint_path(self, agent_name: str, timestamp: Optional[str] = None) -> Path:
+    def _get_checkpoint_path(self, agent_name: str, timestamp: str | None = None) -> Path:
         """Get path for a checkpoint file."""
         if timestamp:
             filename = f"{agent_name}_{timestamp}.json"
@@ -110,7 +109,7 @@ class RecoveryManager:
             filename = f"{agent_name}_latest.json"
         return self.checkpoint_dir / filename
 
-    def _get_agent_checkpoints(self, agent_name: str) -> List[Path]:
+    def _get_agent_checkpoints(self, agent_name: str) -> list[Path]:
         """Get all checkpoint files for an agent, sorted by time (newest first)."""
         pattern = f"{agent_name}_*.json"
         checkpoints = list(self.checkpoint_dir.glob(pattern))
@@ -122,8 +121,8 @@ class RecoveryManager:
         self,
         agent: Any,
         force: bool = False,
-        error: Optional[Exception] = None,
-    ) -> Optional[Path]:
+        error: Exception | None = None,
+    ) -> Path | None:
         """
         Save agent state to checkpoint.
 
@@ -219,7 +218,7 @@ class RecoveryManager:
                 except Exception as e:
                     logger.warning(f"[Recovery] Failed to remove checkpoint: {e}")
 
-    async def load_latest(self, agent_name: str) -> Optional[AgentCheckpoint]:
+    async def load_latest(self, agent_name: str) -> AgentCheckpoint | None:
         """
         Load the most recent checkpoint for an agent.
 
@@ -249,7 +248,7 @@ class RecoveryManager:
             logger.error(f"[Recovery] Failed to load checkpoint: {e}")
             return None
 
-    async def clear_checkpoints(self, agent_name: Optional[str] = None) -> int:
+    async def clear_checkpoints(self, agent_name: str | None = None) -> int:
         """
         Clear checkpoints.
 
@@ -293,7 +292,7 @@ class GracefulShutdown:
 
     def __init__(self, recovery_manager: RecoveryManager):
         self.recovery = recovery_manager
-        self.agents: List[Any] = []
+        self.agents: list[Any] = []
         self._shutdown_event = asyncio.Event()
         self._shutdown_requested = False
 
@@ -336,7 +335,7 @@ class GracefulShutdown:
 
 
 # Global recovery manager instance
-_recovery_manager: Optional[RecoveryManager] = None
+_recovery_manager: RecoveryManager | None = None
 
 
 def get_recovery_manager() -> RecoveryManager:

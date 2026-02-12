@@ -2,10 +2,9 @@
 Tests for Historical Data Storage.
 """
 
-import asyncio
 import os
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 import pytest_asyncio

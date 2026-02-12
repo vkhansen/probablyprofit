@@ -2,12 +2,11 @@
 Tests for the Order Management System.
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from probablyprofit.api.exceptions import OrderCancelError, OrderModifyError, OrderNotFoundError
+from probablyprofit.api.exceptions import OrderCancelError, OrderNotFoundError
 from probablyprofit.api.order_manager import (
     Fill,
     ManagedOrder,
@@ -15,7 +14,6 @@ from probablyprofit.api.order_manager import (
     OrderManager,
     OrderSide,
     OrderStatus,
-    OrderType,
 )
 
 

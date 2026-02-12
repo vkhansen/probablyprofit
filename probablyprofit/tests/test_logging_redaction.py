@@ -2,8 +2,6 @@
 Tests for the logging module with secret redaction.
 """
 
-import pytest
-
 
 class TestRedactString:
     """Tests for redact_string function."""

@@ -5,8 +5,6 @@ Tests for strategy loading and parsing.
 import os
 import tempfile
 
-import pytest
-
 from probablyprofit.agent.strategy import CustomStrategy, MeanReversionStrategy, NewsTradingStrategy
 
 
@@ -64,7 +62,7 @@ class TestStrategyFiles:
             for filename in os.listdir(examples_dir):
                 if filename.endswith(".txt"):
                     filepath = os.path.join(examples_dir, filename)
-                    with open(filepath, "r") as f:
+                    with open(filepath) as f:
                         content = f.read()
 
                     # Each strategy file should have content
@@ -82,7 +80,7 @@ class TestStrategyFiles:
             temp_path = f.name
 
         try:
-            with open(temp_path, "r") as f:
+            with open(temp_path) as f:
                 content = f.read()
 
             strategy = CustomStrategy(prompt_text=content)

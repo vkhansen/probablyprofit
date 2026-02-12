@@ -5,15 +5,14 @@ Wraps multiple AI agents and automatically falls back to the next
 if one fails. Ensures your bot keeps running even when APIs go down.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any
 
 from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.api.client import PolymarketClient
-from probablyprofit.api.exceptions import AgentException
 from probablyprofit.risk.manager import RiskManager
 
 
@@ -24,10 +23,10 @@ class AgentHealth:
     name: str
     failures: int = 0
     successes: int = 0
-    last_failure: Optional[datetime] = None
-    last_success: Optional[datetime] = None
+    last_failure: datetime | None = None
+    last_success: datetime | None = None
     is_healthy: bool = True
-    cooldown_until: Optional[datetime] = None
+    cooldown_until: datetime | None = None
 
     # Config
     failure_threshold: int = 3  # Failures before marking unhealthy
@@ -114,12 +113,12 @@ class FallbackAgent(BaseAgent):
         self,
         client: PolymarketClient,
         risk_manager: RiskManager,
-        agents: List[BaseAgent],
+        agents: list[BaseAgent],
         name: str = "FallbackAgent",
         loop_interval: int = 60,
-        strategy: Optional[Any] = None,
+        strategy: Any | None = None,
         dry_run: bool = False,
-        config: Optional[FallbackConfig] = None,
+        config: FallbackConfig | None = None,
     ):
         """
         Initialize fallback agent.
@@ -150,12 +149,12 @@ class FallbackAgent(BaseAgent):
         self.config = config or FallbackConfig()
 
         # Initialize health tracking for each agent
-        self.agent_health: Dict[str, AgentHealth] = {
+        self.agent_health: dict[str, AgentHealth] = {
             agent.name: AgentHealth(name=agent.name) for agent in agents
         }
 
         # Track which agent made the last decision
-        self.last_decision_agent: Optional[str] = None
+        self.last_decision_agent: str | None = None
 
         # Stats
         self.fallback_count = 0
@@ -164,7 +163,7 @@ class FallbackAgent(BaseAgent):
         agent_names = [a.name for a in agents]
         logger.info(f"[FallbackAgent] Initialized with {len(agents)} agents: {agent_names}")
 
-    def _get_available_agents(self) -> List[BaseAgent]:
+    def _get_available_agents(self) -> list[BaseAgent]:
         """Get list of agents that are currently available (healthy or cooldown expired)."""
         available = []
 
@@ -206,7 +205,7 @@ class FallbackAgent(BaseAgent):
                 health.failures = 0
             available_agents = self.agents
 
-        errors: List[tuple] = []  # (agent_name, error)
+        errors: list[tuple] = []  # (agent_name, error)
 
         for i, agent in enumerate(available_agents):
             health = self.agent_health[agent.name]
@@ -274,7 +273,7 @@ class FallbackAgent(BaseAgent):
             },
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get fallback statistics."""
         return {
             "total_decisions": self.total_decisions,
@@ -292,7 +291,7 @@ class FallbackAgent(BaseAgent):
             },
         }
 
-    def reset_health(self, agent_name: Optional[str] = None) -> None:
+    def reset_health(self, agent_name: str | None = None) -> None:
         """
         Reset health status for agents.
 
@@ -318,9 +317,9 @@ def create_fallback_agent(
     client: PolymarketClient,
     risk_manager: RiskManager,
     strategy_prompt: str,
-    openai_key: Optional[str] = None,
-    anthropic_key: Optional[str] = None,
-    google_key: Optional[str] = None,
+    openai_key: str | None = None,
+    anthropic_key: str | None = None,
+    google_key: str | None = None,
     dry_run: bool = False,
     **kwargs,
 ) -> FallbackAgent:

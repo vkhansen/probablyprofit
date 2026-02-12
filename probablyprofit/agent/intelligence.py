@@ -6,13 +6,11 @@ Aggregates Twitter, Reddit, Google Trends, and news for smarter decisions.
 """
 
 import os
-from typing import Any, List, Optional
 
 from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
-from probablyprofit.api.client import Market, PolymarketClient
-from probablyprofit.risk.manager import RiskManager
+from probablyprofit.api.client import Market
 
 
 class IntelligenceAgent(BaseAgent):
@@ -39,8 +37,8 @@ class IntelligenceAgent(BaseAgent):
     def __init__(
         self,
         wrapped_agent: BaseAgent,
-        perplexity_api_key: Optional[str] = None,
-        twitter_token: Optional[str] = None,
+        perplexity_api_key: str | None = None,
+        twitter_token: str | None = None,
         top_n_markets: int = 3,
         enable_sentiment: bool = True,
         enable_aggregator: bool = False,
@@ -107,7 +105,7 @@ class IntelligenceAgent(BaseAgent):
             except ImportError:
                 logger.warning("Sentiment analyzer not available")
 
-    def _get_top_markets(self, markets: List[Market], n: int) -> List[Market]:
+    def _get_top_markets(self, markets: list[Market], n: int) -> list[Market]:
         """Get top N markets by volume."""
         sorted_markets = sorted(markets, key=lambda m: m.volume, reverse=True)
         return sorted_markets[:n]

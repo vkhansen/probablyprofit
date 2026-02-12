@@ -5,8 +5,7 @@ AI-powered trading agent using GPT-4 for decision-making.
 """
 
 import asyncio
-import json
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from openai import OpenAI
@@ -25,12 +24,10 @@ from probablyprofit.api.exceptions import (
     AgentException,
     NetworkException,
     SchemaValidationError,
-    ValidationException,
 )
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
-    validate_confidence,
     validate_strategy,
     wrap_strategy_safely,
 )
@@ -50,7 +47,7 @@ class OpenAIAgent(BaseAgent):
         model: str = "gpt-4o",
         name: str = "OpenAIAgent",
         loop_interval: int = 60,
-        strategy: Optional[Any] = None,
+        strategy: Any | None = None,
         dry_run: bool = False,
     ):
         """
@@ -230,7 +227,7 @@ Output schema:
 
         except SchemaValidationError:
             # Re-raise SchemaValidationError to trigger retry
-            logger.warning(f"Schema validation failed, will retry...")
+            logger.warning("Schema validation failed, will retry...")
             raise
         except AgentException:
             # Re-raise AgentException to propagate it up

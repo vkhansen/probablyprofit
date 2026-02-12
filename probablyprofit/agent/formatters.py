@@ -4,8 +4,6 @@ Shared formatting utilities for AI agents.
 This eliminates duplication across Anthropic, OpenAI, and Gemini agents.
 """
 
-from typing import List
-
 from probablyprofit.agent.base import AgentMemory, Observation
 from probablyprofit.api.client import Market, Position
 
@@ -19,7 +17,7 @@ class ObservationFormatter:
     """
 
     @staticmethod
-    def format_markets(markets: List[Market], limit: int = 20) -> str:
+    def format_markets(markets: list[Market], limit: int = 20) -> str:
         """
         Format market data for AI consumption.
 
@@ -48,7 +46,7 @@ class ObservationFormatter:
         return "\n".join(markets_info)
 
     @staticmethod
-    def format_positions(positions: List[Position]) -> str:
+    def format_positions(positions: list[Position]) -> str:
         """
         Format position data for AI consumption.
 

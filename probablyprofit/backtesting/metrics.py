@@ -9,14 +9,13 @@ PERFORMANCE OPTIMIZATION:
     ~3x faster calculations for large equity curves.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 
 # Type alias for array-like data
-ArrayLike = Union[np.ndarray, pd.Series, List[float]]
+ArrayLike = Union[np.ndarray, pd.Series, list[float]]
 
 
 def _to_numpy(data: ArrayLike) -> np.ndarray:
@@ -43,7 +42,7 @@ class PerformanceMetrics:
 
     @staticmethod
     def calculate_returns(
-        equity_curve: List[Dict[str, Any]],
+        equity_curve: list[dict[str, Any]],
     ) -> np.ndarray:
         """
         Calculate returns from equity curve.
@@ -77,7 +76,7 @@ class PerformanceMetrics:
 
     @staticmethod
     def calculate_returns_pandas(
-        equity_curve: List[Dict[str, Any]],
+        equity_curve: list[dict[str, Any]],
     ) -> pd.Series:
         """
         Calculate returns from equity curve (pandas version for compatibility).
@@ -165,7 +164,7 @@ class PerformanceMetrics:
 
     @staticmethod
     def max_drawdown(
-        equity_curve: List[Dict[str, Any]],
+        equity_curve: list[dict[str, Any]],
     ) -> float:
         """
         Calculate maximum drawdown.
@@ -230,9 +229,9 @@ class PerformanceMetrics:
 
     @staticmethod
     def calculate_all_metrics(
-        equity_curve: List[Dict[str, Any]],
-        trades: List[Dict[str, Any]],
-    ) -> Dict[str, float]:
+        equity_curve: list[dict[str, Any]],
+        trades: list[dict[str, Any]],
+    ) -> dict[str, float]:
         """
         Calculate all performance metrics.
 

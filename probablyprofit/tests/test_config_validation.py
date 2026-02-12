@@ -2,11 +2,6 @@
 Tests for configuration classes and validation.
 """
 
-import os
-from unittest.mock import patch
-
-import pytest
-
 
 class TestConfig:
     """Tests for main Config class."""

@@ -5,7 +5,7 @@ Shows how to create a plugin that sends trade notifications to Discord.
 """
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 from loguru import logger
 
@@ -37,7 +37,7 @@ class DiscordNotificationPlugin(OutputPlugin):
         super().__init__(config)
         self.webhook_url = webhook_url or os.getenv("DISCORD_WEBHOOK_URL", "")
 
-    async def send(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def send(self, event_type: str, data: dict[str, Any]) -> None:
         """Send notification to Discord."""
         if not self.webhook_url:
             logger.debug("Discord webhook URL not configured, skipping")

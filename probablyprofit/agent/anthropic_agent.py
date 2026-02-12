@@ -5,26 +5,24 @@ AI-powered trading agent using Claude for decision-making.
 """
 
 import json
-from typing import AsyncIterator, Callable, Optional
+from collections.abc import Callable
 
 from anthropic import Anthropic
 from loguru import logger
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
-from probablyprofit.agent.formatters import ObservationFormatter, get_decision_schema
+from probablyprofit.agent.formatters import ObservationFormatter
 from probablyprofit.api.client import PolymarketClient
 from probablyprofit.api.exceptions import (
     AgentException,
     NetworkException,
     SchemaValidationError,
-    ValidationException,
 )
 from probablyprofit.risk.manager import RiskManager
 from probablyprofit.utils.ai_rate_limiter import AIRateLimiter
 from probablyprofit.utils.resilience import retry
 from probablyprofit.utils.validation_utils import validate_and_parse_decision
 from probablyprofit.utils.validators import (
-    validate_confidence,
     validate_strategy,
     wrap_strategy_safely,
 )
@@ -317,7 +315,7 @@ If you recommend holding or not trading, just respond with action: "hold" and ex
     def decide_streaming(
         self,
         observation: Observation,
-        on_chunk: Optional[Callable[[str], None]] = None,
+        on_chunk: Callable[[str], None] | None = None,
     ) -> Decision:
         """
         Use Claude to make a trading decision with streaming output.

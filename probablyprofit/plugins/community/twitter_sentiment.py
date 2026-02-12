@@ -5,9 +5,7 @@ Shows how to create a data source plugin that fetches social sentiment.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
-
-from loguru import logger
+from typing import Any
 
 from probablyprofit.plugins import PluginType, registry
 from probablyprofit.plugins.base import DataSourcePlugin, PluginConfig
@@ -46,7 +44,7 @@ class TwitterSentimentPlugin(DataSourcePlugin):
             "ai": {"sentiment": 0.80, "volume": 12000},
         }
 
-    async def fetch(self, query: str) -> Dict[str, Any]:
+    async def fetch(self, query: str) -> dict[str, Any]:
         """
         Fetch sentiment for a query.
 
@@ -81,12 +79,12 @@ class TwitterSentimentPlugin(DataSourcePlugin):
             "timestamp": datetime.now().isoformat(),
         }
 
-    async def fetch_batch(self, queries: List[str]) -> List[Dict[str, Any]]:
+    async def fetch_batch(self, queries: list[str]) -> list[dict[str, Any]]:
         """Fetch sentiment for multiple queries."""
         # In production, you'd optimize this with batch API calls
         return [await self.fetch(q) for q in queries]
 
-    def get_bullish_topics(self, threshold: float = 0.6) -> List[str]:
+    def get_bullish_topics(self, threshold: float = 0.6) -> list[str]:
         """Get topics with bullish sentiment."""
         return [
             topic for topic, data in self._mock_sentiments.items() if data["sentiment"] >= threshold

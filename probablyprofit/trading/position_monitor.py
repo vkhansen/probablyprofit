@@ -5,13 +5,14 @@ Automatically monitors open positions and executes stop-loss/take-profit orders.
 """
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
-from probablyprofit.api.client import PolymarketClient, Position
+from probablyprofit.api.client import PolymarketClient
 from probablyprofit.risk.manager import RiskManager
 
 
@@ -26,7 +27,7 @@ class PositionAlert:
     message: str
     timestamp: datetime = field(default_factory=datetime.now)
     executed: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -37,11 +38,11 @@ class MonitoredPosition:
     outcome: str
     entry_price: float
     size: float
-    stop_loss_price: Optional[float] = None
-    take_profit_price: Optional[float] = None
-    trailing_stop_pct: Optional[float] = None
+    stop_loss_price: float | None = None
+    take_profit_price: float | None = None
+    trailing_stop_pct: float | None = None
     highest_price: float = 0.0  # For trailing stops
-    alerts: List[PositionAlert] = field(default_factory=list)
+    alerts: list[PositionAlert] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
 
 
@@ -79,7 +80,7 @@ class PositionMonitor:
         risk_manager: RiskManager,
         check_interval: float = 10.0,
         dry_run: bool = True,
-        on_alert: Optional[Callable[[PositionAlert], None]] = None,
+        on_alert: Callable[[PositionAlert], None] | None = None,
     ):
         """
         Initialize position monitor.
@@ -97,15 +98,15 @@ class PositionMonitor:
         self.dry_run = dry_run
         self.on_alert = on_alert
 
-        self._positions: Dict[str, MonitoredPosition] = {}
+        self._positions: dict[str, MonitoredPosition] = {}
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
         # Statistics
         self._checks = 0
         self._stop_losses_triggered = 0
         self._take_profits_triggered = 0
-        self._alerts: List[PositionAlert] = []
+        self._alerts: list[PositionAlert] = []
 
         logger.info(
             f"PositionMonitor initialized (interval: {check_interval}s, dry_run: {dry_run})"
@@ -117,11 +118,11 @@ class PositionMonitor:
         outcome: str,
         entry_price: float,
         size: float,
-        stop_loss_pct: Optional[float] = 0.20,
-        take_profit_pct: Optional[float] = 0.50,
-        trailing_stop_pct: Optional[float] = None,
-        stop_loss_price: Optional[float] = None,
-        take_profit_price: Optional[float] = None,
+        stop_loss_pct: float | None = 0.20,
+        take_profit_pct: float | None = 0.50,
+        trailing_stop_pct: float | None = None,
+        stop_loss_price: float | None = None,
+        take_profit_price: float | None = None,
     ) -> str:
         """
         Add a position to monitor.
@@ -182,9 +183,9 @@ class PositionMonitor:
     def update_thresholds(
         self,
         position_id: str,
-        stop_loss_price: Optional[float] = None,
-        take_profit_price: Optional[float] = None,
-        trailing_stop_pct: Optional[float] = None,
+        stop_loss_price: float | None = None,
+        take_profit_price: float | None = None,
+        trailing_stop_pct: float | None = None,
     ) -> bool:
         """Update thresholds for a monitored position."""
         if position_id not in self._positions:
@@ -202,7 +203,7 @@ class PositionMonitor:
         logger.info(f"[PositionMonitor] Updated thresholds for {position_id}")
         return True
 
-    async def check_positions(self) -> List[PositionAlert]:
+    async def check_positions(self) -> list[PositionAlert]:
         """
         Check all monitored positions and trigger alerts/orders.
 
@@ -409,12 +410,12 @@ class PositionMonitor:
             await asyncio.sleep(self.check_interval)
 
     @property
-    def positions(self) -> Dict[str, MonitoredPosition]:
+    def positions(self) -> dict[str, MonitoredPosition]:
         """Get all monitored positions."""
         return self._positions.copy()
 
     @property
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get monitoring statistics."""
         return {
             "running": self._running,
@@ -426,7 +427,7 @@ class PositionMonitor:
             "dry_run": self.dry_run,
         }
 
-    def get_recent_alerts(self, n: int = 10) -> List[PositionAlert]:
+    def get_recent_alerts(self, n: int = 10) -> list[PositionAlert]:
         """Get the most recent alerts."""
         return self._alerts[-n:]
 

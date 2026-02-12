@@ -7,12 +7,12 @@ Provides emergency stop functionality for the trading bot:
 - HTTP endpoint for remote kill (via web API)
 """
 
-import os
 import signal
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -42,8 +42,8 @@ class KillSwitch:
 
     def __init__(
         self,
-        kill_file: Optional[Path] = None,
-        reason_file: Optional[Path] = None,
+        kill_file: Path | None = None,
+        reason_file: Path | None = None,
     ):
         """
         Initialize kill switch.
@@ -56,12 +56,12 @@ class KillSwitch:
         self.reason_file = reason_file or KILL_SWITCH_REASON_FILE
 
         # Callbacks for kill switch activation
-        self._on_activate_callbacks: List[Callable[[str], Any]] = []
-        self._on_deactivate_callbacks: List[Callable[[], Any]] = []
+        self._on_activate_callbacks: list[Callable[[str], Any]] = []
+        self._on_deactivate_callbacks: list[Callable[[], Any]] = []
 
         # Internal state
         self._programmatic_kill = False
-        self._kill_reason: Optional[str] = None
+        self._kill_reason: str | None = None
 
         logger.debug(f"Kill switch initialized. File: {self.kill_file}")
 
@@ -87,7 +87,7 @@ class KillSwitch:
 
         return self._programmatic_kill
 
-    def get_reason(self) -> Optional[str]:
+    def get_reason(self) -> str | None:
         """
         Get the reason for kill switch activation.
 
@@ -179,7 +179,7 @@ class KillSwitchError(Exception):
 
 
 # Singleton instance
-_kill_switch: Optional[KillSwitch] = None
+_kill_switch: KillSwitch | None = None
 
 
 def get_kill_switch() -> KillSwitch:

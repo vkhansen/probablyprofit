@@ -9,7 +9,6 @@ Tests end-to-end flows with mock exchange:
 - Crash recovery
 """
 
-import asyncio
 import os
 import tempfile
 from pathlib import Path
@@ -99,7 +98,7 @@ class TestRiskManagerDrawdown:
 
     def test_drawdown_calculation(self):
         """Test drawdown is calculated correctly."""
-        from probablyprofit.risk.manager import RiskLimits, RiskManager
+        from probablyprofit.risk.manager import RiskManager
 
         rm = RiskManager(initial_capital=1000.0)
 
@@ -171,7 +170,6 @@ class TestOrderManagerPartialFills:
         from probablyprofit.api.order_manager import (
             Fill,
             ManagedOrder,
-            OrderBook,
             OrderManager,
             OrderSide,
             OrderStatus,
@@ -358,7 +356,6 @@ class TestTelegramAlerter:
 
     def test_rate_limiting(self):
         """Test rate limiting logic."""
-        import time
 
         from probablyprofit.alerts.telegram import TelegramAlerter
 
@@ -475,7 +472,7 @@ class TestFullTradeFlow:
         from unittest.mock import AsyncMock, MagicMock
 
         from probablyprofit.agent.base import BaseAgent, Decision, Observation
-        from probablyprofit.api.client import Market, Order
+        from probablyprofit.api.client import Market
         from probablyprofit.risk.manager import RiskManager
 
         mock_market = Market(
@@ -538,8 +535,6 @@ class TestCrashRecovery:
     @pytest.mark.asyncio
     async def test_risk_state_persistence(self):
         """Test that risk state can be saved and loaded."""
-        import os
-        import tempfile
 
         from probablyprofit.risk.manager import RiskManager
 

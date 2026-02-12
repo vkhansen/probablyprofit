@@ -5,9 +5,10 @@ Event-driven hooks for plugin lifecycle and trading events.
 """
 
 import asyncio
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -67,7 +68,7 @@ class HookManager:
     """
 
     def __init__(self):
-        self._handlers: Dict[Hook, List[HookHandler]] = {hook: [] for hook in Hook}
+        self._handlers: dict[Hook, list[HookHandler]] = {hook: [] for hook in Hook}
 
     def on(
         self,
@@ -121,7 +122,7 @@ class HookManager:
         hook: Hook,
         data: Any = None,
         stop_on_false: bool = False,
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Emit a hook event to all handlers.
 
@@ -154,14 +155,14 @@ class HookManager:
 
         return results
 
-    def clear(self, hook: Optional[Hook] = None) -> None:
+    def clear(self, hook: Hook | None = None) -> None:
         """Clear handlers for a specific hook or all hooks."""
         if hook:
             self._handlers[hook] = []
         else:
             self._handlers = {h: [] for h in Hook}
 
-    def list_handlers(self) -> Dict[str, List[str]]:
+    def list_handlers(self) -> dict[str, list[str]]:
         """List all registered handlers by hook."""
         return {
             hook.value: [h.name for h in handlers]

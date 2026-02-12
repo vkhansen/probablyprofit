@@ -2,15 +2,11 @@
 Comprehensive tests for the Agent framework.
 """
 
-import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from probablyprofit.agent.base import AgentMemory, BaseAgent, Decision, Observation
-from probablyprofit.api.client import Market, Order, Position
-from probablyprofit.risk.manager import RiskManager
+from probablyprofit.agent.base import AgentMemory, Decision, Observation
 
 
 class TestObservation:

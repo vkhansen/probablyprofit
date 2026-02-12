@@ -2,12 +2,9 @@
 Tests for resilience utilities.
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
-from probablyprofit.api.exceptions import NetworkException, RateLimitException
+from probablyprofit.api.exceptions import NetworkException
 from probablyprofit.utils.resilience import (
     CircuitBreaker,
     CircuitState,

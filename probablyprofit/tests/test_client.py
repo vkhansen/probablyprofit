@@ -3,7 +3,6 @@ Tests for the Polymarket API client.
 """
 
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

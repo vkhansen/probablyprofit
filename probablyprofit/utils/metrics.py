@@ -14,11 +14,9 @@ Supports:
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional
-
-from loguru import logger
+from typing import Any
 
 
 @dataclass
@@ -27,7 +25,7 @@ class MetricPoint:
 
     timestamp: datetime
     value: float
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
 
 
 class Counter:
@@ -43,16 +41,16 @@ class Counter:
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self._values: Dict[str, float] = defaultdict(float)
+        self._values: dict[str, float] = defaultdict(float)
         self._lock = Lock()
 
-    def inc(self, value: float = 1.0, labels: Optional[Dict[str, str]] = None) -> None:
+    def inc(self, value: float = 1.0, labels: dict[str, str] | None = None) -> None:
         """Increment counter."""
         label_key = self._labels_to_key(labels)
         with self._lock:
             self._values[label_key] += value
 
-    def get(self, labels: Optional[Dict[str, str]] = None) -> float:
+    def get(self, labels: dict[str, str] | None = None) -> float:
         """Get current counter value."""
         label_key = self._labels_to_key(labels)
         with self._lock:
@@ -63,7 +61,7 @@ class Counter:
         with self._lock:
             self._values.clear()
 
-    def _labels_to_key(self, labels: Optional[Dict[str, str]]) -> str:
+    def _labels_to_key(self, labels: dict[str, str] | None) -> str:
         if not labels:
             return ""
         return ",".join(f"{k}={v}" for k, v in sorted(labels.items()))
@@ -94,34 +92,34 @@ class Gauge:
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self._values: Dict[str, float] = defaultdict(float)
+        self._values: dict[str, float] = defaultdict(float)
         self._lock = Lock()
 
-    def set(self, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def set(self, value: float, labels: dict[str, str] | None = None) -> None:
         """Set gauge value."""
         label_key = self._labels_to_key(labels)
         with self._lock:
             self._values[label_key] = value
 
-    def inc(self, value: float = 1.0, labels: Optional[Dict[str, str]] = None) -> None:
+    def inc(self, value: float = 1.0, labels: dict[str, str] | None = None) -> None:
         """Increment gauge."""
         label_key = self._labels_to_key(labels)
         with self._lock:
             self._values[label_key] += value
 
-    def dec(self, value: float = 1.0, labels: Optional[Dict[str, str]] = None) -> None:
+    def dec(self, value: float = 1.0, labels: dict[str, str] | None = None) -> None:
         """Decrement gauge."""
         label_key = self._labels_to_key(labels)
         with self._lock:
             self._values[label_key] -= value
 
-    def get(self, labels: Optional[Dict[str, str]] = None) -> float:
+    def get(self, labels: dict[str, str] | None = None) -> float:
         """Get current gauge value."""
         label_key = self._labels_to_key(labels)
         with self._lock:
             return self._values[label_key]
 
-    def _labels_to_key(self, labels: Optional[Dict[str, str]]) -> str:
+    def _labels_to_key(self, labels: dict[str, str] | None) -> str:
         if not labels:
             return ""
         return ",".join(f"{k}={v}" for k, v in sorted(labels.items()))
@@ -159,12 +157,12 @@ class Histogram:
         self.name = name
         self.description = description
         self.buckets = sorted(buckets)
-        self._counts: Dict[str, Dict[float, int]] = defaultdict(lambda: defaultdict(int))
-        self._sums: Dict[str, float] = defaultdict(float)
-        self._count: Dict[str, int] = defaultdict(int)
+        self._counts: dict[str, dict[float, int]] = defaultdict(lambda: defaultdict(int))
+        self._sums: dict[str, float] = defaultdict(float)
+        self._count: dict[str, int] = defaultdict(int)
         self._lock = Lock()
 
-    def observe(self, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def observe(self, value: float, labels: dict[str, str] | None = None) -> None:
         """Record an observation."""
         label_key = self._labels_to_key(labels)
         with self._lock:
@@ -174,11 +172,11 @@ class Histogram:
                 if value <= bucket:
                     self._counts[label_key][bucket] += 1
 
-    def time(self, labels: Optional[Dict[str, str]] = None) -> "_HistogramTimer":
+    def time(self, labels: dict[str, str] | None = None) -> "_HistogramTimer":
         """Context manager to time a block of code."""
         return _HistogramTimer(self, labels)
 
-    def _labels_to_key(self, labels: Optional[Dict[str, str]]) -> str:
+    def _labels_to_key(self, labels: dict[str, str] | None) -> str:
         if not labels:
             return ""
         return ",".join(f"{k}={v}" for k, v in sorted(labels.items()))
@@ -219,7 +217,7 @@ class Histogram:
 class _HistogramTimer:
     """Context manager for timing histogram observations."""
 
-    def __init__(self, histogram: Histogram, labels: Optional[Dict[str, str]]):
+    def __init__(self, histogram: Histogram, labels: dict[str, str] | None):
         self.histogram = histogram
         self.labels = labels
         self.start_time: float = 0
@@ -249,9 +247,9 @@ class MetricsRegistry:
     """
 
     def __init__(self) -> None:
-        self._counters: Dict[str, Counter] = {}
-        self._gauges: Dict[str, Gauge] = {}
-        self._histograms: Dict[str, Histogram] = {}
+        self._counters: dict[str, Counter] = {}
+        self._gauges: dict[str, Gauge] = {}
+        self._histograms: dict[str, Histogram] = {}
         self._lock = Lock()
 
     def counter(self, name: str, description: str = "") -> Counter:
@@ -292,9 +290,9 @@ class MetricsRegistry:
                 lines.append(histogram.to_prometheus())
         return "\n\n".join(lines)
 
-    def get_all_stats(self) -> Dict[str, Any]:
+    def get_all_stats(self) -> dict[str, Any]:
         """Get all metrics as a dictionary."""
-        stats: Dict[str, Any] = {"counters": {}, "gauges": {}, "histograms": {}}
+        stats: dict[str, Any] = {"counters": {}, "gauges": {}, "histograms": {}}
         with self._lock:
             for name, counter in self._counters.items():
                 stats["counters"][name] = dict(counter._values)
@@ -309,7 +307,7 @@ class MetricsRegistry:
 
 
 # Global metrics registry
-_registry: Optional[MetricsRegistry] = None
+_registry: MetricsRegistry | None = None
 
 
 def get_metrics_registry() -> MetricsRegistry:
@@ -321,7 +319,7 @@ def get_metrics_registry() -> MetricsRegistry:
 
 
 # Pre-defined metrics for the trading bot
-def get_trading_metrics() -> Dict[str, Any]:
+def get_trading_metrics() -> dict[str, Any]:
     """Get pre-defined trading metrics."""
     registry = get_metrics_registry()
 

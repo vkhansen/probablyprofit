@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from probablyprofit.agent.anthropic_agent import AnthropicAgent
 from probablyprofit.agent.ensemble import EnsembleAgent, VotingStrategy
-from probablyprofit.agent.fallback import FallbackAgent, create_fallback_agent
+from probablyprofit.agent.fallback import create_fallback_agent
 from probablyprofit.agent.gemini_agent import GeminiAgent
 from probablyprofit.agent.openai_agent import OpenAIAgent
 from probablyprofit.agent.strategy import (
@@ -288,7 +288,7 @@ async def main():
             print(f"💡 Tip: Create a {args.prompt_file} file with your strategy instructions.")
             return
 
-        with open(args.prompt_file, "r") as f:
+        with open(args.prompt_file) as f:
             prompt_text = f.read()
 
         keywords = [k.strip() for k in args.keywords.split(",")] if args.keywords else []

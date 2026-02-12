@@ -4,7 +4,7 @@ Validation utilities for LLM responses.
 
 import json
 import re
-from typing import Any, Dict, Type, TypeVar, Union
+from typing import TypeVar
 
 from loguru import logger
 from pydantic import BaseModel, ValidationError
@@ -35,7 +35,7 @@ def clean_json_string(text: str) -> str:
     return text.strip()
 
 
-def validate_and_parse_decision(response_text: str, model_class: Type[T] = Decision) -> T:
+def validate_and_parse_decision(response_text: str, model_class: type[T] = Decision) -> T:
     """
     Validate and parse a JSON response into a Pydantic model.
 

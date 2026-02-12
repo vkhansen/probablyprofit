@@ -5,11 +5,8 @@ Real-time social sentiment and breaking news from Twitter/X.
 Supports both official API and scraping fallback.
 """
 
-import asyncio
 import re
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
 
 import httpx
 from loguru import logger
@@ -27,7 +24,7 @@ class Tweet(BaseModel):
     likes: int = 0
     retweets: int = 0
     replies: int = 0
-    url: Optional[str] = None
+    url: str | None = None
 
     @property
     def engagement(self) -> int:
@@ -53,11 +50,11 @@ class TwitterSentiment(BaseModel):
     """Aggregated Twitter sentiment for a topic."""
 
     topic: str
-    tweets: List[Tweet] = []
+    tweets: list[Tweet] = []
     sentiment_score: float = 0.0  # -1 (bearish) to +1 (bullish)
     volume: int = 0
-    top_influencers: List[str] = []
-    trending_hashtags: List[str] = []
+    top_influencers: list[str] = []
+    trending_hashtags: list[str] = []
     timestamp: datetime = datetime.now()
 
     @property
@@ -167,7 +164,7 @@ def analyze_tweet_sentiment(text: str) -> float:
     return (bullish_count - bearish_count) / total
 
 
-def extract_hashtags(text: str) -> List[str]:
+def extract_hashtags(text: str) -> list[str]:
     """Extract hashtags from tweet text."""
     return re.findall(r"#(\w+)", text)
 
@@ -202,7 +199,7 @@ class TwitterClient:
 
     def __init__(
         self,
-        bearer_token: Optional[str] = None,
+        bearer_token: str | None = None,
         timeout: float = 30.0,
     ):
         """
@@ -235,7 +232,7 @@ class TwitterClient:
         query: str,
         max_results: int = 50,
         hours_back: int = 24,
-    ) -> List[Tweet]:
+    ) -> list[Tweet]:
         """
         Search for tweets matching a query.
 
@@ -257,7 +254,7 @@ class TwitterClient:
         query: str,
         max_results: int,
         hours_back: int,
-    ) -> List[Tweet]:
+    ) -> list[Tweet]:
         """Search using official Twitter API v2."""
         try:
             # Build query with recency
@@ -320,7 +317,7 @@ class TwitterClient:
         self,
         query: str,
         max_results: int,
-    ) -> List[Tweet]:
+    ) -> list[Tweet]:
         """Search using Nitter scraping (fallback)."""
         tweets = []
 
@@ -351,7 +348,7 @@ class TwitterClient:
 
         return tweets
 
-    def _parse_nitter_html(self, html: str, max_results: int) -> List[Tweet]:
+    def _parse_nitter_html(self, html: str, max_results: int) -> list[Tweet]:
         """Parse tweets from Nitter HTML response."""
         tweets = []
 

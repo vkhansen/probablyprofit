@@ -11,7 +11,7 @@ from probablyprofit.plugins.base import (
     PluginConfig,
     StrategyPlugin,
 )
-from probablyprofit.plugins.registry import PluginInfo, PluginRegistry, PluginType
+from probablyprofit.plugins.registry import PluginRegistry, PluginType
 
 
 class TestPluginConfig:

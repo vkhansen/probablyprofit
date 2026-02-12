@@ -8,7 +8,7 @@ and aggregates their decisions using configurable voting strategies.
 import asyncio
 from collections import Counter
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -52,12 +52,12 @@ class EnsembleAgent(BaseAgent):
         self,
         client: PolymarketClient,
         risk_manager: RiskManager,
-        agents: List[BaseAgent],
+        agents: list[BaseAgent],
         voting_strategy: VotingStrategy = VotingStrategy.MAJORITY,
         min_agreement: int = 2,
         name: str = "EnsembleAgent",
         loop_interval: int = 60,
-        strategy: Optional[Any] = None,
+        strategy: Any | None = None,
         dry_run: bool = False,
         timeout_seconds: float = 60.0,
     ):
@@ -96,7 +96,7 @@ class EnsembleAgent(BaseAgent):
 
     async def _get_agent_decision(
         self, agent: BaseAgent, observation: Observation
-    ) -> Tuple[str, Optional[Decision], Optional[Exception]]:
+    ) -> tuple[str, Decision | None, Exception | None]:
         """
         Get decision from a single agent with error handling.
 
@@ -115,7 +115,7 @@ class EnsembleAgent(BaseAgent):
             logger.warning(f"Agent '{agent.name}' failed: {e}")
             return (agent.name, None, e)
 
-    async def _collect_decisions(self, observation: Observation) -> List[Tuple[str, Decision]]:
+    async def _collect_decisions(self, observation: Observation) -> list[tuple[str, Decision]]:
         """
         Collect decisions from all agents in parallel.
 
@@ -141,7 +141,7 @@ class EnsembleAgent(BaseAgent):
         logger.info(f"Collected {len(successful)}/{len(self.agents)} decisions")
         return successful
 
-    def _aggregate_majority(self, decisions: List[Tuple[str, Decision]]) -> Decision:
+    def _aggregate_majority(self, decisions: list[tuple[str, Decision]]) -> Decision:
         """
         Aggregate decisions using simple majority voting.
 
@@ -186,7 +186,7 @@ class EnsembleAgent(BaseAgent):
         # Aggregate the winning decisions
         return self._merge_decisions(winning_decisions, winning_action, vote_count, len(decisions))
 
-    def _aggregate_weighted(self, decisions: List[Tuple[str, Decision]]) -> Decision:
+    def _aggregate_weighted(self, decisions: list[tuple[str, Decision]]) -> Decision:
         """
         Aggregate decisions weighted by confidence scores.
 
@@ -196,8 +196,8 @@ class EnsembleAgent(BaseAgent):
             return Decision(action="hold", reasoning="No agent decisions available")
 
         # Calculate weighted scores for each action
-        action_weights: Dict[str, float] = {}
-        action_decisions: Dict[str, List[Decision]] = {}
+        action_weights: dict[str, float] = {}
+        action_decisions: dict[str, list[Decision]] = {}
 
         for _, decision in decisions:
             action = decision.action
@@ -230,7 +230,7 @@ class EnsembleAgent(BaseAgent):
             confidence_boost=winning_weight / total_weight,
         )
 
-    def _aggregate_unanimous(self, decisions: List[Tuple[str, Decision]]) -> Decision:
+    def _aggregate_unanimous(self, decisions: list[tuple[str, Decision]]) -> Decision:
         """
         Require unanimous agreement from all agents.
 
@@ -262,7 +262,7 @@ class EnsembleAgent(BaseAgent):
                 confidence=0.3,
             )
 
-    def _aggregate_highest_confidence(self, decisions: List[Tuple[str, Decision]]) -> Decision:
+    def _aggregate_highest_confidence(self, decisions: list[tuple[str, Decision]]) -> Decision:
         """
         Trust the agent with highest confidence.
         """
@@ -285,7 +285,7 @@ class EnsembleAgent(BaseAgent):
 
     def _merge_decisions(
         self,
-        decisions: List[Decision],
+        decisions: list[Decision],
         action: str,
         vote_count: int,
         total_agents: int,

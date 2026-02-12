@@ -5,7 +5,6 @@ Tests for cache thread safety using TTLCache.
 import asyncio
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 

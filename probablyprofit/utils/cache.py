@@ -13,9 +13,10 @@ import asyncio
 import threading
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from loguru import logger
 
@@ -62,7 +63,7 @@ class TTLCache(Generic[T]):
     def __init__(
         self,
         ttl: float = 60.0,
-        max_size: Optional[int] = None,
+        max_size: int | None = None,
         name: str = "cache",
     ):
         """
@@ -90,7 +91,7 @@ class TTLCache(Generic[T]):
 
         logger.debug(f"[Cache] '{name}' initialized (TTL: {ttl}s, max_size: {max_size})")
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """
         Get a value from the cache (thread-safe).
 
@@ -119,7 +120,7 @@ class TTLCache(Generic[T]):
             self._hits += 1
             return entry.value
 
-    def set(self, key: str, value: T, ttl: Optional[float] = None) -> None:
+    def set(self, key: str, value: T, ttl: float | None = None) -> None:
         """
         Set a value in the cache (thread-safe).
 
@@ -216,7 +217,7 @@ class TTLCache(Generic[T]):
         return len(self._cache)
 
     @property
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         total_requests = self._hits + self._misses
         hit_rate = self._hits / total_requests if total_requests > 0 else 0.0
@@ -254,12 +255,12 @@ class AsyncTTLCache(TTLCache[T]):
     All operations are protected by an asyncio lock.
     """
 
-    async def get_async(self, key: str) -> Optional[T]:
+    async def get_async(self, key: str) -> T | None:
         """Async version of get."""
         async with self._lock:
             return self.get(key)
 
-    async def set_async(self, key: str, value: T, ttl: Optional[float] = None) -> None:
+    async def set_async(self, key: str, value: T, ttl: float | None = None) -> None:
         """Async version of set."""
         async with self._lock:
             self.set(key, value, ttl)
@@ -273,7 +274,7 @@ class AsyncTTLCache(TTLCache[T]):
         self,
         key: str,
         factory: Callable[[], T],
-        ttl: Optional[float] = None,
+        ttl: float | None = None,
     ) -> T:
         """
         Get value from cache, or compute and store it.
@@ -303,8 +304,8 @@ class AsyncTTLCache(TTLCache[T]):
 
 def cached(
     ttl: float = 60.0,
-    key_builder: Optional[Callable[..., str]] = None,
-    cache_name: Optional[str] = None,
+    key_builder: Callable[..., str] | None = None,
+    cache_name: str | None = None,
 ):
     """
     Decorator to cache function results.
@@ -383,7 +384,7 @@ price_cache: AsyncTTLCache = AsyncTTLCache(ttl=10.0, max_size=500, name="prices"
 orderbook_cache: AsyncTTLCache = AsyncTTLCache(ttl=5.0, max_size=100, name="orderbooks")
 
 
-def get_all_cache_stats() -> Dict[str, Dict[str, Any]]:
+def get_all_cache_stats() -> dict[str, dict[str, Any]]:
     """Get statistics for all global caches."""
     return {
         "markets": market_cache.stats,
@@ -392,7 +393,7 @@ def get_all_cache_stats() -> Dict[str, Dict[str, Any]]:
     }
 
 
-def clear_all_caches() -> Dict[str, int]:
+def clear_all_caches() -> dict[str, int]:
     """Clear all global caches."""
     return {
         "markets": market_cache.clear(),

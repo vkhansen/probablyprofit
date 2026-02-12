@@ -7,9 +7,10 @@ Rate limiters specifically configured for AI API providers
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from loguru import logger
 
@@ -24,7 +25,7 @@ class AIProviderLimits:
 
     requests_per_minute: int
     tokens_per_minute: int
-    requests_per_day: Optional[int] = None
+    requests_per_day: int | None = None
 
 
 # Known rate limits for AI providers (as of 2024)
@@ -67,13 +68,13 @@ class AIRateLimiter:
     """
 
     # Class-level registry of all AI rate limiters
-    _limiters: Dict[str, "AIRateLimiter"] = {}
+    _limiters: dict[str, "AIRateLimiter"] = {}
 
     def __init__(
         self,
         provider: str,
-        requests_per_minute: Optional[int] = None,
-        tokens_per_minute: Optional[int] = None,
+        requests_per_minute: int | None = None,
+        tokens_per_minute: int | None = None,
     ):
         """
         Initialize AI rate limiter.
@@ -107,7 +108,7 @@ class AIRateLimiter:
         self._token_lock = asyncio.Lock()
 
         # Backoff state
-        self._backoff_until: Optional[float] = None
+        self._backoff_until: float | None = None
         self._consecutive_429s = 0
 
         # Statistics
@@ -189,7 +190,7 @@ class AIRateLimiter:
         """
         self._total_tokens += actual_tokens
 
-    def record_rate_limit_error(self, retry_after: Optional[float] = None) -> None:
+    def record_rate_limit_error(self, retry_after: float | None = None) -> None:
         """
         Record a rate limit error (429 response).
 
@@ -218,7 +219,7 @@ class AIRateLimiter:
         self._consecutive_429s = 0
 
     @property
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get rate limiter statistics."""
         return {
             "provider": self.provider,
@@ -359,6 +360,6 @@ def ai_resilient(
     return decorator
 
 
-def get_all_ai_limiter_stats() -> Dict[str, Dict[str, Any]]:
+def get_all_ai_limiter_stats() -> dict[str, dict[str, Any]]:
     """Get statistics for all AI rate limiters."""
     return {name: limiter.stats for name, limiter in AIRateLimiter._limiters.items()}

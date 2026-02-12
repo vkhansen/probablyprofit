@@ -8,18 +8,15 @@ PERFORMANCE OPTIMIZATION:
     to prevent memory leaks during long backtests.
 """
 
-import asyncio
 from collections import deque
 from datetime import datetime
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
-import pandas as pd
 from loguru import logger
 from pydantic import BaseModel
 
 from probablyprofit.agent.base import BaseAgent, Decision, Observation
 from probablyprofit.api.client import Market, Order, Position
-from probablyprofit.risk.manager import RiskManager
 
 # Default max size for equity history to prevent memory leaks
 DEFAULT_EQUITY_HISTORY_MAXLEN = 100_000
@@ -42,8 +39,8 @@ class BacktestResult(BaseModel):
     avg_loss: float
     max_drawdown: float
     sharpe_ratio: float
-    trades: List[Dict[str, Any]] = []
-    equity_curve: List[Dict[str, Any]] = []
+    trades: list[dict[str, Any]] = []
+    equity_curve: list[dict[str, Any]] = []
 
 
 class BacktestEngine:
@@ -61,7 +58,7 @@ class BacktestEngine:
     def __init__(
         self,
         initial_capital: float = 1000.0,
-        equity_history_maxlen: Optional[int] = None,
+        equity_history_maxlen: int | None = None,
     ):
         """
         Initialize backtest engine.
@@ -80,12 +77,12 @@ class BacktestEngine:
         self._equity_history_maxlen = equity_history_maxlen or DEFAULT_EQUITY_HISTORY_MAXLEN
 
         # Simulation state
-        self.positions: Dict[str, Position] = {}
-        self.trades: List[Order] = []
+        self.positions: dict[str, Position] = {}
+        self.trades: list[Order] = []
 
         # PERFORMANCE: Use deque with maxlen for bounded equity history
         # Automatically evicts oldest entries when maxlen is exceeded
-        self._equity_history_deque: Deque[Dict[str, Any]] = deque(
+        self._equity_history_deque: deque[dict[str, Any]] = deque(
             maxlen=self._equity_history_maxlen
         )
 
@@ -95,7 +92,7 @@ class BacktestEngine:
         )
 
     @property
-    def equity_history(self) -> List[Dict[str, Any]]:
+    def equity_history(self) -> list[dict[str, Any]]:
         """
         Get equity history as a list.
 
@@ -105,7 +102,7 @@ class BacktestEngine:
         return list(self._equity_history_deque)
 
     @equity_history.setter
-    def equity_history(self, value: List[Dict[str, Any]]) -> None:
+    def equity_history(self, value: list[dict[str, Any]]) -> None:
         """Set equity history from a list."""
         self._equity_history_deque.clear()
         for item in value:
@@ -114,8 +111,8 @@ class BacktestEngine:
     async def run_backtest(
         self,
         agent: BaseAgent,
-        market_data: List[List[Market]],
-        timestamps: List[datetime],
+        market_data: list[list[Market]],
+        timestamps: list[datetime],
     ) -> BacktestResult:
         """
         Run a backtest simulation.
@@ -181,7 +178,7 @@ class BacktestEngine:
     def _execute_simulated_trade(
         self,
         decision: Decision,
-        markets: List[Market],
+        markets: list[Market],
     ) -> None:
         """
         Execute a trade in simulation.
@@ -260,7 +257,7 @@ class BacktestEngine:
 
     def _calculate_total_equity(
         self,
-        markets: List[Market],
+        markets: list[Market],
     ) -> float:
         """
         Calculate total equity (cash + positions).

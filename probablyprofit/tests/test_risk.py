@@ -1,6 +1,6 @@
 import pytest
 
-from probablyprofit.risk.manager import RiskLimits, RiskManager
+from probablyprofit.risk.manager import RiskManager
 
 
 @pytest.fixture

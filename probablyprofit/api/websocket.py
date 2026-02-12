@@ -13,10 +13,11 @@ Features automatic reconnection with exponential backoff and jitter.
 import asyncio
 import json
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
 from loguru import logger
 
@@ -52,7 +53,7 @@ class PriceUpdate:
     price: float
     timestamp: datetime
     volume: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -61,8 +62,8 @@ class OrderbookUpdate:
 
     market_id: str
     outcome: str
-    bids: List[tuple]  # [(price, size), ...]
-    asks: List[tuple]
+    bids: list[tuple]  # [(price, size), ...]
+    asks: list[tuple]
     timestamp: datetime
 
 
@@ -92,7 +93,7 @@ class WebSocketClient:
 
     def __init__(
         self,
-        url: Optional[str] = None,
+        url: str | None = None,
         reconnect: bool = True,
         reconnect_interval: float = 5.0,
         max_reconnect_attempts: int = 10,
@@ -114,25 +115,25 @@ class WebSocketClient:
         self.reconnect_interval = reconnect_interval
         self.max_reconnect_attempts = max_reconnect_attempts
 
-        self._ws: Optional[ClientProtocol] = None
-        self._subscriptions: Set[str] = set()
+        self._ws: ClientProtocol | None = None
+        self._subscriptions: set[str] = set()
         self._running = False
-        self._task: Optional[asyncio.Task] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
         self._reconnect_count = 0
         self._state = ConnectionState.DISCONNECTED
 
         # Callbacks
-        self._price_callbacks: List[Callable[[PriceUpdate], Any]] = []
-        self._orderbook_callbacks: List[Callable[[OrderbookUpdate], Any]] = []
-        self._error_callbacks: List[Callable[[Exception], Any]] = []
-        self._connect_callbacks: List[Callable[[], Any]] = []
-        self._disconnect_callbacks: List[Callable[[], Any]] = []
+        self._price_callbacks: list[Callable[[PriceUpdate], Any]] = []
+        self._orderbook_callbacks: list[Callable[[OrderbookUpdate], Any]] = []
+        self._error_callbacks: list[Callable[[Exception], Any]] = []
+        self._connect_callbacks: list[Callable[[], Any]] = []
+        self._disconnect_callbacks: list[Callable[[], Any]] = []
 
         # Statistics
         self._messages_received = 0
-        self._last_message_time: Optional[datetime] = None
-        self._connected_at: Optional[datetime] = None
+        self._last_message_time: datetime | None = None
+        self._connected_at: datetime | None = None
         self._total_reconnects = 0
 
         # Heartbeat settings
@@ -243,7 +244,7 @@ class WebSocketClient:
 
         logger.info("[WebSocket] Disconnected")
 
-    async def subscribe(self, market_ids: List[str]) -> bool:
+    async def subscribe(self, market_ids: list[str]) -> bool:
         """
         Subscribe to market updates.
 
@@ -264,7 +265,7 @@ class WebSocketClient:
 
         return True
 
-    async def unsubscribe(self, market_ids: List[str]) -> bool:
+    async def unsubscribe(self, market_ids: list[str]) -> bool:
         """
         Unsubscribe from market updates.
 
@@ -285,7 +286,7 @@ class WebSocketClient:
 
         return True
 
-    async def _send_subscriptions(self, market_ids: Set[str]) -> bool:
+    async def _send_subscriptions(self, market_ids: set[str]) -> bool:
         """Send subscription messages."""
         if not self._ws:
             return False
@@ -314,7 +315,7 @@ class WebSocketClient:
             logger.error(f"[WebSocket] Network error during subscription: {e}")
             return False
 
-    async def _send_unsubscriptions(self, market_ids: Set[str]) -> bool:
+    async def _send_unsubscriptions(self, market_ids: set[str]) -> bool:
         """Send unsubscription messages."""
         if not self._ws:
             return False
@@ -416,7 +417,7 @@ class WebSocketClient:
         except json.JSONDecodeError:
             logger.warning(f"[WebSocket] Invalid JSON: {message[:100]}")
 
-    def _parse_price_update(self, data: dict) -> Optional[PriceUpdate]:
+    def _parse_price_update(self, data: dict) -> PriceUpdate | None:
         """Parse a price update from message data."""
         try:
             return PriceUpdate(
@@ -434,7 +435,7 @@ class WebSocketClient:
             logger.debug(f"[WebSocket] Failed to parse price update - missing key: {e}")
             return None
 
-    def _parse_orderbook_update(self, data: dict) -> Optional[OrderbookUpdate]:
+    def _parse_orderbook_update(self, data: dict) -> OrderbookUpdate | None:
         """Parse an orderbook update from message data."""
         try:
             return OrderbookUpdate(
@@ -574,7 +575,7 @@ class WebSocketClient:
         return self._ws is not None and self._running
 
     @property
-    def subscriptions(self) -> Set[str]:
+    def subscriptions(self) -> set[str]:
         """Get current subscriptions."""
         return self._subscriptions.copy()
 
@@ -584,7 +585,7 @@ class WebSocketClient:
         return self._state
 
     @property
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get connection statistics."""
         uptime = None
         if self._connected_at and self._state == ConnectionState.CONNECTED:
@@ -607,8 +608,8 @@ class WebSocketClient:
 
 # Convenience function to create and connect
 async def create_websocket_client(
-    market_ids: Optional[List[str]] = None,
-    on_price: Optional[Callable[[PriceUpdate], Any]] = None,
+    market_ids: list[str] | None = None,
+    on_price: Callable[[PriceUpdate], Any] | None = None,
 ) -> WebSocketClient:
     """
     Create and connect a WebSocket client.

@@ -10,7 +10,6 @@ Security features:
 """
 
 import secrets
-from typing import Optional
 
 from eth_account import Account
 from eth_account.signers.local import LocalAccount

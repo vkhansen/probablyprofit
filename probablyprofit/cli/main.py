@@ -23,7 +23,6 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Ensure package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -48,11 +47,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 import click
-from rich import print as rprint
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
@@ -207,7 +203,7 @@ def setup(reconfigure: bool = False):
                         console.print(f"[green]✓ {name} configured successfully![/green]\n")
                         break
                     else:
-                        console.print(f"[red]✗ Invalid API key.[/red]")
+                        console.print("[red]✗ Invalid API key.[/red]")
                         if not Confirm.ask("Try again?", default=True):
                             console.print("[dim]Skipped.[/dim]\n")
                             break
@@ -347,9 +343,9 @@ def setup(reconfigure: bool = False):
 @click.option("--whitelist", help="Comma-separated keywords to include in market questions")
 @click.option("--duration-max", type=int, help="Maximum market duration in minutes")
 def run(
-    strategy: Optional[str],
-    strategy_file: Optional[str],
-    dry_run: Optional[bool],
+    strategy: str | None,
+    strategy_file: str | None,
+    dry_run: bool | None,
     live: bool,
     confirm_live: bool,
     skip_preflight: bool,
@@ -363,9 +359,9 @@ def run(
     no_stream: bool,
     kelly: bool,
     sizing: str,
-    tag_slug: Optional[str],
-    whitelist: Optional[str],
-    duration_max: Optional[int],
+    tag_slug: str | None,
+    whitelist: str | None,
+    duration_max: int | None,
 ):
     """
     Start the trading bot.
@@ -632,7 +628,6 @@ def run(
                     console.print("[bold cyan]AI Analysis:[/bold cyan]\n")
 
                     # Create a live display for streaming
-                    from rich.live import Live
                     from rich.text import Text
 
                     output_text = Text()
@@ -685,7 +680,7 @@ def run(
 @cli.command()
 @click.option("--limit", "-l", type=int, default=10, help="Number of markets to show")
 @click.option("--search", "-q", type=str, help="Search query to filter markets")
-def markets(limit: int, search: Optional[str]):
+def markets(limit: int, search: str | None):
     """
     List active prediction markets.
 
@@ -800,7 +795,7 @@ def status():
     console.print()
 
     # Show config location
-    console.print(f"[dim]Config: ~/.probablyprofit/[/dim]")
+    console.print("[dim]Config: ~/.probablyprofit/[/dim]")
     console.print()
 
     if not config.is_configured:
@@ -1105,7 +1100,7 @@ def emergency_stop(reason: str):
             )
         else:
             activate_kill_switch(reason)
-            console.print(f"[red]Kill switch ACTIVATED[/red]")
+            console.print("[red]Kill switch ACTIVATED[/red]")
             console.print(f"Reason: {reason}\n")
             console.print("All trading has been halted.")
             console.print("To resume, run: probablyprofit resume-trading")
@@ -1183,7 +1178,7 @@ def preflight():
 @cli.command(name="backup-db")
 @click.option("--output", "-o", type=click.Path(), help="Output path for backup")
 @click.option("--compress", "-c", is_flag=True, help="Compress backup with gzip")
-def backup_db(output: Optional[str], compress: bool):
+def backup_db(output: str | None, compress: bool):
     """
     Create a backup of the trading database.
 
@@ -1201,7 +1196,6 @@ def backup_db(output: Optional[str], compress: bool):
         0 * * * * cd /path/to/bot && probablyprofit backup-db --compress
     """
     import shutil
-    import time
     from datetime import datetime
 
     console.print("[bold]Database Backup[/bold]\n")
@@ -1248,9 +1242,8 @@ def backup_db(output: Optional[str], compress: bool):
             if compress:
                 import gzip
 
-                with open(db_path, "rb") as f_in:
-                    with gzip.open(output, "wb") as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+                with open(db_path, "rb") as f_in, gzip.open(output, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
             else:
                 shutil.copy2(db_path, output)
 

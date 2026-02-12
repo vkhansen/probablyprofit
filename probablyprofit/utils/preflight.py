@@ -6,12 +6,10 @@ All checks must pass for live trading to proceed.
 """
 
 import asyncio
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -32,7 +30,7 @@ class CheckResult:
     name: str
     status: CheckStatus
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
 
 @dataclass
@@ -40,7 +38,7 @@ class PreflightReport:
     """Complete preflight check report."""
 
     timestamp: datetime = field(default_factory=datetime.now)
-    checks: List[CheckResult] = field(default_factory=list)
+    checks: list[CheckResult] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -53,12 +51,12 @@ class PreflightReport:
         return any(c.status == CheckStatus.WARN for c in self.checks)
 
     @property
-    def failed_checks(self) -> List[CheckResult]:
+    def failed_checks(self) -> list[CheckResult]:
         """Get list of failed checks."""
         return [c for c in self.checks if c.status == CheckStatus.FAIL]
 
     @property
-    def warning_checks(self) -> List[CheckResult]:
+    def warning_checks(self) -> list[CheckResult]:
         """Get list of warning checks."""
         return [c for c in self.checks if c.status == CheckStatus.WARN]
 
@@ -111,7 +109,7 @@ class PreflightChecker:
 
     def __init__(self):
         """Initialize preflight checker."""
-        self._checks: List[callable] = [
+        self._checks: list[callable] = [
             self._check_kill_switch,
             self._check_credentials,
             self._check_private_key,

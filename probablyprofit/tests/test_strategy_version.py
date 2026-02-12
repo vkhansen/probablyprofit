@@ -2,9 +2,7 @@
 Tests for the strategy versioning module.
 """
 
-from datetime import datetime, timedelta
-
-import pytest
+from datetime import datetime
 
 
 class TestStrategyVersion:

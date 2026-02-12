@@ -4,18 +4,16 @@ Strategy Parameter Optimizer
 Grid Search and Monte Carlo simulation for finding optimal strategy parameters.
 """
 
-import asyncio
-from concurrent.futures import ProcessPoolExecutor
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from loguru import logger
 
-from probablyprofit.api.client import Market
 from probablyprofit.backtesting.data import MockDataGenerator
-from probablyprofit.backtesting.engine import BacktestEngine, BacktestResult
+from probablyprofit.backtesting.engine import BacktestEngine
 
 
 @dataclass
@@ -23,17 +21,17 @@ class ParameterRange:
     """Defines a parameter range for optimization."""
 
     name: str
-    values: List[Any]
+    values: list[Any]
 
 
 @dataclass
 class OptimizationResult:
     """Results from parameter optimization."""
 
-    best_params: Dict[str, Any]
+    best_params: dict[str, Any]
     best_sharpe: float
     best_return: float
-    all_results: List[Dict[str, Any]]
+    all_results: list[dict[str, Any]]
     runtime_seconds: float
 
 
@@ -49,7 +47,7 @@ class StrategyOptimizer:
 
     def __init__(
         self,
-        agent_factory: Callable[[Dict[str, Any]], "BaseAgent"],
+        agent_factory: Callable[[dict[str, Any]], "BaseAgent"],
         initial_capital: float = 1000.0,
         data_days: int = 30,
         seed: int = 42,
@@ -78,7 +76,7 @@ class StrategyOptimizer:
 
     async def grid_search(
         self,
-        param_ranges: List[ParameterRange],
+        param_ranges: list[ParameterRange],
         metric: str = "sharpe_ratio",
     ) -> OptimizationResult:
         """
@@ -156,10 +154,10 @@ class StrategyOptimizer:
 
     async def monte_carlo(
         self,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         num_simulations: int = 100,
         volatility_range: tuple = (0.8, 1.2),
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Run Monte Carlo simulation to test parameter robustness.
 
@@ -217,7 +215,7 @@ class StrategyOptimizer:
             "max_drawdown_worst": max(drawdowns),
         }
 
-    def _generate_combinations(self, param_ranges: List[ParameterRange]) -> List[Dict[str, Any]]:
+    def _generate_combinations(self, param_ranges: list[ParameterRange]) -> list[dict[str, Any]]:
         """Generate all parameter combinations."""
         if not param_ranges:
             return [{}]
@@ -244,11 +242,11 @@ def print_optimization_report(result: OptimizationResult) -> None:
     print(f"\n⏱️  Runtime: {result.runtime_seconds:.1f} seconds")
     print(f"🔍 Combinations tested: {len(result.all_results)}")
 
-    print(f"\n🏆 Best Parameters:")
+    print("\n🏆 Best Parameters:")
     for k, v in result.best_params.items():
         print(f"   {k}: {v}")
 
-    print(f"\n📊 Best Performance:")
+    print("\n📊 Best Performance:")
     print(f"   Sharpe Ratio: {result.best_sharpe:.2f}")
     print(f"   Return: {result.best_return:+.2%}")
 

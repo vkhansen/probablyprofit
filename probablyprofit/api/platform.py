@@ -5,7 +5,7 @@ Provides a unified interface for different prediction market platforms.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -15,21 +15,21 @@ class UnifiedMarket(BaseModel):
 
     id: str  # ticker or condition_id
     question: str
-    description: Optional[str] = None
+    description: str | None = None
     end_date: Any  # datetime
-    outcomes: List[str]
-    outcome_prices: List[float]
+    outcomes: list[str]
+    outcome_prices: list[float]
     volume: float
     liquidity: float
     active: bool = True
     platform: str = "unknown"
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class UnifiedOrder(BaseModel):
     """Unified order representation."""
 
-    order_id: Optional[str] = None
+    order_id: str | None = None
     market_id: str
     outcome: str
     side: str  # buy/sell
@@ -37,7 +37,7 @@ class UnifiedOrder(BaseModel):
     price: float
     status: str = "pending"
     platform: str = "unknown"
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class UnifiedPosition(BaseModel):
@@ -64,22 +64,22 @@ class PlatformClient(ABC):
     """Abstract base class for all platform clients."""
 
     @abstractmethod
-    async def get_markets(self, **kwargs) -> List[Any]:
+    async def get_markets(self, **kwargs) -> list[Any]:
         """Get active markets."""
         pass
 
     @abstractmethod
-    async def get_market(self, market_id: str) -> Optional[Any]:
+    async def get_market(self, market_id: str) -> Any | None:
         """Get specific market."""
         pass
 
     @abstractmethod
-    async def place_order(self, **kwargs) -> Optional[Any]:
+    async def place_order(self, **kwargs) -> Any | None:
         """Place an order."""
         pass
 
     @abstractmethod
-    async def get_positions(self) -> List[Any]:
+    async def get_positions(self) -> list[Any]:
         """Get current positions."""
         pass
 

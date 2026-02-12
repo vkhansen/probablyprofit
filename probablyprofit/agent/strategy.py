@@ -7,7 +7,6 @@ Defines modular strategies that determine:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from probablyprofit.api.client import Market
 
@@ -19,7 +18,7 @@ class BaseStrategy(ABC):
         self.name = name
 
     @abstractmethod
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         """
         Select relevant markets from the available list.
         """
@@ -43,7 +42,7 @@ class MeanReversionStrategy(BaseStrategy):
         super().__init__(name="MeanReversion")
         self.timeframe = timeframe
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # Filter for active markets with decent liquidity/volume
         filtered = [
             m
@@ -72,11 +71,11 @@ class NewsTradingStrategy(BaseStrategy):
     Strategy that trades based on specific keywords and news events.
     """
 
-    def __init__(self, keywords: List[str]):
+    def __init__(self, keywords: list[str]):
         super().__init__(name="NewsTrader")
         self.keywords = [k.lower() for k in keywords]
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         filtered = []
         for m in markets:
             if not m.active:
@@ -107,12 +106,12 @@ class CustomStrategy(BaseStrategy):
     Strategy defined by the user via a text file or string.
     """
 
-    def __init__(self, prompt_text: str, keywords: List[str] = None):
+    def __init__(self, prompt_text: str, keywords: list[str] = None):
         super().__init__(name="CustomUserStrategy")
         self.prompt_text = prompt_text
         self.keywords = [k.lower() for k in keywords] if keywords else []
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # This strategy now relies on the upstream filtering from the agent's observe method.
         # It can be used for additional filtering if needed, but for now, we pass it through.
         return markets
@@ -132,7 +131,7 @@ class MomentumStrategy(BaseStrategy):
         self.min_volume = min_volume
         self.lookback_hours = lookback_hours
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         filtered = [
             m for m in markets if m.active and m.volume >= self.min_volume and len(m.outcomes) == 2
         ]
@@ -141,7 +140,7 @@ class MomentumStrategy(BaseStrategy):
         return filtered[:15]
 
     def get_prompt(self) -> str:
-        return f"""
+        return """
 You are a Momentum Trader analyzing prediction markets.
 Your strategy is to follow price trends and ride momentum.
 
@@ -178,7 +177,7 @@ class ValueStrategy(BaseStrategy):
         super().__init__(name="Value")
         self.min_liquidity = min_liquidity
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         filtered = [
             m
             for m in markets
@@ -225,7 +224,7 @@ class ContrarianStrategy(BaseStrategy):
         super().__init__(name="Contrarian")
         self.extreme_threshold = extreme_threshold
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # Look for markets at extreme prices
         filtered = []
         for m in markets:
@@ -279,7 +278,7 @@ class VolatilityStrategy(BaseStrategy):
         super().__init__(name="Volatility")
         self.min_volume = min_volume
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # Look for markets with prices in the "volatile" middle range
         filtered = []
         for m in markets:
@@ -341,7 +340,7 @@ class CalendarStrategy(BaseStrategy):
         super().__init__(name="Calendar")
         self.days_until_expiry = days_until_expiry
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         from datetime import datetime, timedelta
 
         cutoff = datetime.now() + timedelta(days=self.days_until_expiry)
@@ -403,7 +402,7 @@ class ArbitrageStrategy(BaseStrategy):
     def __init__(self):
         super().__init__(name="Arbitrage")
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # Look for markets where YES + NO prices don't sum to ~1.0
         # or markets with unusual spreads
         filtered = []
@@ -415,10 +414,7 @@ class ArbitrageStrategy(BaseStrategy):
 
             # Check for mispricing (prices should sum to ~1.0)
             price_sum = yes_price + no_price
-            if price_sum < 0.98 or price_sum > 1.02:
-                filtered.append(m)
-            # Also include liquid markets for cross-platform arb
-            elif m.volume > 10000:
+            if price_sum < 0.98 or price_sum > 1.02 or m.volume > 10000:
                 filtered.append(m)
 
         return filtered[:20]
@@ -462,7 +458,7 @@ class ShortTermCryptoStrategy(BaseStrategy):
     def __init__(self):
         super().__init__(name="ShortTermCrypto")
 
-    def filter_markets(self, markets: List[Market]) -> List[Market]:
+    def filter_markets(self, markets: list[Market]) -> list[Market]:
         # This strategy relies on the upstream filtering from the agent's observe method
         # which should be configured with tag_slug="cryptocurrency" and whitelist="15M"
         return markets

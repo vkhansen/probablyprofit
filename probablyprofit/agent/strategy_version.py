@@ -9,7 +9,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -31,17 +31,17 @@ class StrategyVersion:
     content: str
     version_hash: str
     created_at: datetime = field(default_factory=datetime.now)
-    name: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    name: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_content(
         cls,
         content: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "StrategyVersion":
         """
         Create a StrategyVersion from content.
@@ -83,7 +83,7 @@ class StrategyVersion:
         """Get first 8 characters of hash."""
         return self.version_hash[:8]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "version_hash": self.version_hash,
@@ -114,16 +114,16 @@ class StrategyRegistry:
     """
 
     def __init__(self):
-        self._versions: Dict[str, StrategyVersion] = {}
+        self._versions: dict[str, StrategyVersion] = {}
         self._history: list = []  # List of (timestamp, version_hash) tuples
-        self._active_version: Optional[str] = None
+        self._active_version: str | None = None
 
     def register(
         self,
         content: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
         activate: bool = True,
     ) -> StrategyVersion:
         """
@@ -178,17 +178,17 @@ class StrategyRegistry:
         logger.info(f"Activated strategy version: {version_hash[:8]}")
         return True
 
-    def get_active(self) -> Optional[StrategyVersion]:
+    def get_active(self) -> StrategyVersion | None:
         """Get the currently active strategy version."""
         if self._active_version:
             return self._versions.get(self._active_version)
         return None
 
-    def get_version(self, version_hash: str) -> Optional[StrategyVersion]:
+    def get_version(self, version_hash: str) -> StrategyVersion | None:
         """Get a specific version by hash."""
         return self._versions.get(version_hash)
 
-    def get_all_versions(self) -> Dict[str, StrategyVersion]:
+    def get_all_versions(self) -> dict[str, StrategyVersion]:
         """Get all registered versions."""
         return self._versions.copy()
 
@@ -196,7 +196,7 @@ class StrategyRegistry:
         """Get activation history."""
         return self._history.copy()
 
-    def get_version_at_time(self, timestamp: datetime) -> Optional[StrategyVersion]:
+    def get_version_at_time(self, timestamp: datetime) -> StrategyVersion | None:
         """
         Get the strategy version that was active at a given time.
 
@@ -218,7 +218,7 @@ class StrategyRegistry:
         return None
 
     @property
-    def active_version_hash(self) -> Optional[str]:
+    def active_version_hash(self) -> str | None:
         """Get the hash of the active version."""
         return self._active_version
 
@@ -227,7 +227,7 @@ class StrategyRegistry:
         """Get total number of registered versions."""
         return len(self._versions)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert registry state to dictionary."""
         return {
             "active_version": self._active_version,
@@ -238,7 +238,7 @@ class StrategyRegistry:
 
 
 # Global registry singleton
-_strategy_registry: Optional[StrategyRegistry] = None
+_strategy_registry: StrategyRegistry | None = None
 
 
 def get_strategy_registry() -> StrategyRegistry:
@@ -251,8 +251,8 @@ def get_strategy_registry() -> StrategyRegistry:
 
 def register_strategy(
     content: str,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
+    name: str | None = None,
+    description: str | None = None,
 ) -> StrategyVersion:
     """
     Convenience function to register a strategy.
@@ -272,6 +272,6 @@ def register_strategy(
     )
 
 
-def get_active_strategy() -> Optional[StrategyVersion]:
+def get_active_strategy() -> StrategyVersion | None:
     """Get the currently active strategy."""
     return get_strategy_registry().get_active()

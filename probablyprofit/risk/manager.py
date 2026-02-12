@@ -14,7 +14,7 @@ Provides risk management primitives for safe trading.
 import asyncio
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -63,7 +63,7 @@ class RiskManager:
 
     def __init__(
         self,
-        limits: Optional[RiskLimits] = None,
+        limits: RiskLimits | None = None,
         initial_capital: float = 1000.0,
     ):
         """
@@ -88,11 +88,11 @@ class RiskManager:
         self.current_capital = initial_capital
 
         # Tracking
-        self.trades: List[Trade] = []
+        self.trades: list[Trade] = []
         self.daily_pnl = 0.0
         self.current_exposure = 0.0
-        self.open_positions: Dict[str, float] = {}  # market_id -> (size, entry_price)
-        self.position_prices: Dict[str, float] = {}  # market_id -> entry_price
+        self.open_positions: dict[str, float] = {}  # market_id -> (size, entry_price)
+        self.position_prices: dict[str, float] = {}  # market_id -> entry_price
 
         # Drawdown tracking
         self.peak_capital = initial_capital
@@ -101,7 +101,7 @@ class RiskManager:
 
         # Thread-safe locks for state modification
         self._state_lock = threading.Lock()
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._async_lock: asyncio.Lock | None = None
 
         logger.info(f"Risk manager initialized with ${initial_capital:,.2f} capital")
         logger.info(f"Limits: {self.limits}")
@@ -230,7 +230,7 @@ class RiskManager:
         self,
         size: float,
         price: float,
-        market_id: Optional[str] = None,
+        market_id: str | None = None,
     ) -> bool:
         """
         Check if a position can be opened within risk limits.
@@ -484,7 +484,7 @@ class RiskManager:
         entry_price: float,
         current_price: float,
         size: float,
-        stop_loss_pct: Optional[float] = None,
+        stop_loss_pct: float | None = None,
     ) -> bool:
         """
         Check if stop-loss should be triggered.
@@ -515,7 +515,7 @@ class RiskManager:
         entry_price: float,
         current_price: float,
         size: float,
-        take_profit_pct: Optional[float] = None,
+        take_profit_pct: float | None = None,
     ) -> bool:
         """
         Check if take-profit should be triggered.
@@ -546,7 +546,7 @@ class RiskManager:
         size: float,
         price: float,
         pnl: float = 0.0,
-        market_id: Optional[str] = None,
+        market_id: str | None = None,
     ) -> None:
         """
         Record a trade (thread-safe).
@@ -588,7 +588,7 @@ class RiskManager:
         self,
         market_id: str,
         size: float,
-        price: Optional[float] = None,
+        price: float | None = None,
     ) -> None:
         """
         Update position tracking (thread-safe).
@@ -621,7 +621,7 @@ class RiskManager:
             self._daily_loss_warned = False
         logger.info("Daily statistics reset")
 
-    def get_stats(self) -> Dict[str, float]:
+    def get_stats(self) -> dict[str, float]:
         """
         Get risk statistics (thread-safe).
 
@@ -811,7 +811,7 @@ class RiskManager:
             logger.warning(f"Failed to load risk state - invalid JSON: {e}")
             return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Export current state as dictionary (for JSON serialization).
 
@@ -842,7 +842,7 @@ class RiskManager:
             }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RiskManager":
+    def from_dict(cls, data: dict[str, Any]) -> "RiskManager":
         """
         Create RiskManager from dictionary state.
 

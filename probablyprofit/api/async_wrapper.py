@@ -5,9 +5,10 @@ Provides utilities to safely wrap synchronous libraries in async contexts.
 """
 
 import asyncio
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from loguru import logger
 

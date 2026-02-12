@@ -21,14 +21,14 @@ SECURITY WARNING:
 """
 
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 from loguru import logger
-from sqlalchemy import event, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel
 
 
 def _set_sqlite_pragma(dbapi_conn, connection_record):
@@ -178,7 +178,7 @@ class DatabaseManager:
 
 
 # Global database manager instance
-_db_manager: Optional[DatabaseManager] = None
+_db_manager: DatabaseManager | None = None
 
 
 def get_db_manager() -> DatabaseManager:

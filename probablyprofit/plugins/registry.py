@@ -28,7 +28,7 @@ SECURITY WARNING:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from loguru import logger
 
@@ -49,11 +49,11 @@ class PluginInfo:
 
     name: str
     plugin_type: PluginType
-    cls: Type
+    cls: type
     version: str = "1.0.0"
     author: str = "unknown"
     description: str = ""
-    config_schema: Dict[str, Any] = field(default_factory=dict)
+    config_schema: dict[str, Any] = field(default_factory=dict)
 
 
 class PluginRegistry:
@@ -67,8 +67,8 @@ class PluginRegistry:
     """
 
     def __init__(self):
-        self._plugins: Dict[PluginType, Dict[str, PluginInfo]] = {pt: {} for pt in PluginType}
-        self._instances: Dict[str, Any] = {}
+        self._plugins: dict[PluginType, dict[str, PluginInfo]] = {pt: {} for pt in PluginType}
+        self._instances: dict[str, Any] = {}
 
     def register(
         self,
@@ -95,7 +95,7 @@ class PluginRegistry:
 
         return decorator
 
-    def register_plugin(self, cls: Type, name: str, plugin_type: PluginType, **metadata) -> None:
+    def register_plugin(self, cls: type, name: str, plugin_type: PluginType, **metadata) -> None:
         """Register a plugin class directly."""
         if name in self._plugins[plugin_type]:
             logger.warning(f"Plugin '{name}' already registered, overwriting")
@@ -105,11 +105,11 @@ class PluginRegistry:
         self._plugins[plugin_type][name] = info
         logger.debug(f"Registered plugin: {name} ({plugin_type.value})")
 
-    def get(self, name: str, plugin_type: PluginType) -> Optional[PluginInfo]:
+    def get(self, name: str, plugin_type: PluginType) -> PluginInfo | None:
         """Get plugin info by name and type."""
         return self._plugins[plugin_type].get(name)
 
-    def get_all(self, plugin_type: PluginType) -> List[PluginInfo]:
+    def get_all(self, plugin_type: PluginType) -> list[PluginInfo]:
         """Get all plugins of a given type."""
         return list(self._plugins[plugin_type].values())
 
@@ -123,7 +123,7 @@ class PluginRegistry:
         self._instances[name] = instance
         return instance
 
-    def list_plugins(self) -> Dict[str, List[str]]:
+    def list_plugins(self) -> dict[str, list[str]]:
         """List all registered plugins by type."""
         return {pt.value: list(plugins.keys()) for pt, plugins in self._plugins.items() if plugins}
 

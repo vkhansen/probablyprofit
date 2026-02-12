@@ -6,7 +6,7 @@ Aggregates sentiment signals from multiple sources.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -31,15 +31,15 @@ class MarketSentiment(BaseModel):
     confidence: float = 0.5
 
     # Component signals
-    news_sentiment: Optional[float] = None  # -1 to 1
-    social_sentiment: Optional[float] = None  # -1 to 1
-    volume_signal: Optional[float] = None  # -1 to 1 (negative = selling pressure)
-    price_momentum: Optional[float] = None  # -1 to 1
+    news_sentiment: float | None = None  # -1 to 1
+    social_sentiment: float | None = None  # -1 to 1
+    volume_signal: float | None = None  # -1 to 1 (negative = selling pressure)
+    price_momentum: float | None = None  # -1 to 1
 
     # Metadata
     sources_count: int = 0
     last_updated: datetime = datetime.now()
-    raw_data: Dict[str, Any] = {}
+    raw_data: dict[str, Any] = {}
 
     def to_score(self) -> float:
         """Convert sentiment to numeric score (-1 to 1)."""
@@ -60,7 +60,7 @@ class MarketSentiment(BaseModel):
         )
 
         lines = [
-            f"📊 SENTIMENT ANALYSIS:",
+            "📊 SENTIMENT ANALYSIS:",
             f"Overall: {direction} (score: {score:+.2f}, confidence: {self.confidence:.0%})",
         ]
 
@@ -121,7 +121,7 @@ class SentimentAnalyzer:
 
     def _calculate_momentum(
         self,
-        prices: List[float],
+        prices: list[float],
         window: int = 5,
     ) -> float:
         """
@@ -148,7 +148,7 @@ class SentimentAnalyzer:
 
     def _calculate_volume_signal(
         self,
-        volumes: List[float],
+        volumes: list[float],
     ) -> float:
         """
         Calculate volume signal.
@@ -189,10 +189,10 @@ class SentimentAnalyzer:
         self,
         market_id: str,
         market_question: str,
-        news_context: Optional[Any] = None,  # NewsContext
-        price_history: Optional[List[float]] = None,
-        volume_history: Optional[List[float]] = None,
-        social_data: Optional[Dict[str, Any]] = None,
+        news_context: Any | None = None,  # NewsContext
+        price_history: list[float] | None = None,
+        volume_history: list[float] | None = None,
+        social_data: dict[str, Any] | None = None,
     ) -> MarketSentiment:
         """
         Perform sentiment analysis.

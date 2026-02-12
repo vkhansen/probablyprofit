@@ -1,11 +1,10 @@
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from probablyprofit.agent.base import Decision
 from probablyprofit.agent.openai_agent import OpenAIAgent
-from probablyprofit.api.exceptions import AgentException, SchemaValidationError
 
 
 @pytest.mark.asyncio

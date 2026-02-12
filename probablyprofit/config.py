@@ -11,7 +11,7 @@ Handles loading, saving, and validating configuration from multiple sources:
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -28,7 +28,7 @@ class AIProvider:
     """Configuration for an AI provider."""
 
     name: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     model: str = ""
     available: bool = False
 
@@ -37,7 +37,7 @@ class AIProvider:
 class WalletConfig:
     """Wallet configuration."""
 
-    private_key: Optional[str] = None
+    private_key: str | None = None
     platform: str = "polymarket"
 
 
@@ -69,11 +69,11 @@ class APIConfig:
     positions_cache_max_size: int = 200
 
     # Market filtering
-    market_whitelist_keywords: List[str] = field(default_factory=list)
-    market_blacklist_keywords: List[str] = field(default_factory=list)
-    market_tag_slug: Optional[str] = None
-    market_tag_id: Optional[int] = None
-    market_duration_max_minutes: Optional[int] = None
+    market_whitelist_keywords: list[str] = field(default_factory=list)
+    market_blacklist_keywords: list[str] = field(default_factory=list)
+    market_tag_slug: str | None = None
+    market_tag_id: int | None = None
+    market_duration_max_minutes: int | None = None
 
 
 @dataclass
@@ -122,9 +122,9 @@ class RiskConfig:
 class TelegramConfig:
     """Telegram alerting configuration."""
 
-    bot_token: Optional[str] = None
-    chat_id: Optional[str] = None
-    alert_levels: List[str] = field(default_factory=lambda: ["WARNING", "CRITICAL"])
+    bot_token: str | None = None
+    chat_id: str | None = None
+    alert_levels: list[str] = field(default_factory=lambda: ["WARNING", "CRITICAL"])
     rate_limit_per_minute: int = 30
 
     def is_configured(self) -> bool:
@@ -156,15 +156,15 @@ class Config:
     """Main configuration object."""
 
     # AI Providers
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     openai_model: str = "gpt-4o"
-    anthropic_api_key: Optional[str] = None
+    anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-5-20250929"
-    google_api_key: Optional[str] = None
+    google_api_key: str | None = None
     google_model: str = "gemini-2.0-flash"
 
     # Wallet
-    private_key: Optional[str] = None
+    private_key: str | None = None
     platform: str = "polymarket"
 
     # Trading
@@ -173,8 +173,8 @@ class Config:
     interval: int = 60
 
     # Intelligence
-    perplexity_api_key: Optional[str] = None
-    twitter_bearer_token: Optional[str] = None
+    perplexity_api_key: str | None = None
+    twitter_bearer_token: str | None = None
 
     # Risk
     max_position_size: float = 50.0
@@ -191,7 +191,7 @@ class Config:
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
 
-    def get_available_agents(self) -> List[str]:
+    def get_available_agents(self) -> list[str]:
         """Get list of configured AI providers."""
         agents = []
         if self.openai_api_key:
@@ -202,7 +202,7 @@ class Config:
             agents.append("google")
         return agents
 
-    def get_best_agent(self) -> Optional[str]:
+    def get_best_agent(self) -> str | None:
         """Get the best available agent (user preference or first available)."""
         available = self.get_available_agents()
         if not available:
@@ -215,7 +215,7 @@ class Config:
                 return agent
         return available[0] if available else None
 
-    def get_api_key_for_agent(self, agent: str) -> Optional[str]:
+    def get_api_key_for_agent(self, agent: str) -> str | None:
         """Get API key for a specific agent."""
         mapping = {
             "openai": self.openai_api_key,
@@ -237,7 +237,7 @@ class Config:
         """Check if wallet is configured."""
         return bool(self.private_key)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for saving."""
         return {
             "ai": {
@@ -278,7 +278,7 @@ class Config:
             },
         }
 
-    def credentials_to_dict(self) -> Dict[str, Any]:
+    def credentials_to_dict(self) -> dict[str, Any]:
         """Get credentials as dictionary (stored separately for security)."""
         creds = {}
         if self.openai_api_key:
@@ -341,7 +341,7 @@ def _register_config_secrets(config: Config) -> None:
 
 
 # Global config singleton
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:
@@ -627,7 +627,7 @@ def is_placeholder_value(value: str) -> bool:
     return any(pattern in value_lower for pattern in PLACEHOLDER_PATTERNS)
 
 
-def is_test_private_key(key: Optional[str]) -> bool:
+def is_test_private_key(key: str | None) -> bool:
     """Check if private key is the known test key."""
     if not key:
         return False
@@ -638,7 +638,7 @@ def is_test_private_key(key: Optional[str]) -> bool:
     return normalized == TEST_PRIVATE_KEY.lower()
 
 
-def validate_production_credentials(config: Config) -> List[str]:
+def validate_production_credentials(config: Config) -> list[str]:
     """
     Validate credentials are safe for production use.
 
@@ -745,7 +745,7 @@ def validate_api_key(provider: str, key: str) -> bool:
     return False
 
 
-def get_quick_status() -> Dict[str, Any]:
+def get_quick_status() -> dict[str, Any]:
     """Get a quick status summary of the configuration."""
     config = load_config()
 
@@ -765,7 +765,7 @@ class ConfigValidationError(Exception):
     pass
 
 
-def validate_config(config: Config, strict: bool = False) -> List[str]:
+def validate_config(config: Config, strict: bool = False) -> list[str]:
     """
     Validate configuration and return list of warnings/errors.
 
@@ -779,8 +779,8 @@ def validate_config(config: Config, strict: bool = False) -> List[str]:
     Raises:
         ConfigValidationError: If strict=True and critical errors found
     """
-    errors: List[str] = []
-    warnings: List[str] = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Check for at least one AI provider
     if not config.get_available_agents():

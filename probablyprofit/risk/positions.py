@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -74,7 +74,7 @@ class TrailingStop:
             self.lowest_price = self.entry_price
             self.current_stop = self.entry_price * (1 + self.initial_stop_pct)
 
-    def update(self, current_price: float) -> Tuple[bool, float]:
+    def update(self, current_price: float) -> tuple[bool, float]:
         """
         Update trailing stop with current price.
 
@@ -91,7 +91,7 @@ class TrailingStop:
         else:
             return self._update_short(current_price)
 
-    def _update_long(self, current_price: float) -> Tuple[bool, float]:
+    def _update_long(self, current_price: float) -> tuple[bool, float]:
         """Update for long position."""
         # Check if stop hit
         if current_price <= self.current_stop:
@@ -123,7 +123,7 @@ class TrailingStop:
 
         return (False, self.current_stop)
 
-    def _update_short(self, current_price: float) -> Tuple[bool, float]:
+    def _update_short(self, current_price: float) -> tuple[bool, float]:
         """Update for short position."""
         # Check if stop hit
         if current_price >= self.current_stop:
@@ -162,7 +162,7 @@ class TrailingStop:
         else:
             return self.size * (self.entry_price - current_price)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get stop statistics."""
         return {
             "market_id": self.market_id,
@@ -198,21 +198,21 @@ class CorrelationWarning(BaseModel):
     """Warning about correlated positions."""
 
     group: str
-    markets: List[str]
+    markets: list[str]
     total_exposure: float
     direction: str  # "same" or "mixed"
     risk_level: str  # "low", "medium", "high"
     message: str
 
 
-def extract_keywords(text: str) -> Set[str]:
+def extract_keywords(text: str) -> set[str]:
     """Extract keywords from market question."""
     text_lower = text.lower()
     words = set(re.findall(r"\b\w+\b", text_lower))
     return words
 
 
-def find_correlation_group(question: str) -> Optional[str]:
+def find_correlation_group(question: str) -> str | None:
     """Find which correlation group a market belongs to."""
     keywords = extract_keywords(question)
 
@@ -248,8 +248,8 @@ class CorrelationDetector:
 
     def analyze_portfolio(
         self,
-        positions: List[Dict[str, Any]],
-    ) -> List[CorrelationWarning]:
+        positions: list[dict[str, Any]],
+    ) -> list[CorrelationWarning]:
         """
         Analyze portfolio for correlated positions.
 
@@ -267,7 +267,7 @@ class CorrelationDetector:
         warnings = []
 
         # Group positions by correlation group
-        groups: Dict[str, List[Dict]] = {}
+        groups: dict[str, list[dict]] = {}
 
         for pos in positions:
             group = find_correlation_group(pos.get("question", ""))
@@ -333,8 +333,8 @@ class CorrelationDetector:
 
     def get_correlation_matrix(
         self,
-        positions: List[Dict[str, Any]],
-    ) -> Dict[str, Dict[str, float]]:
+        positions: list[dict[str, Any]],
+    ) -> dict[str, dict[str, float]]:
         """
         Build correlation matrix for positions.
 
@@ -421,8 +421,8 @@ class PositionManager:
         self.default_stop_pct = default_stop_pct
 
         # Position tracking
-        self.positions: Dict[str, Dict[str, Any]] = {}
-        self.trailing_stops: Dict[str, TrailingStop] = {}
+        self.positions: dict[str, dict[str, Any]] = {}
+        self.trailing_stops: dict[str, TrailingStop] = {}
 
         # Correlation detector
         self.correlation_detector = CorrelationDetector(exposure_threshold=correlation_threshold)
@@ -440,9 +440,9 @@ class PositionManager:
         size: float,
         side: str = "long",
         enable_trailing_stop: bool = True,
-        trail_pct: Optional[float] = None,
-        stop_pct: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        trail_pct: float | None = None,
+        stop_pct: float | None = None,
+    ) -> dict[str, Any]:
         """
         Open a new position with optional trailing stop.
 
@@ -503,7 +503,7 @@ class PositionManager:
 
         return position
 
-    def close_position(self, market_id: str, exit_price: float) -> Optional[Dict[str, Any]]:
+    def close_position(self, market_id: str, exit_price: float) -> dict[str, Any] | None:
         """
         Close a position.
 
@@ -543,8 +543,8 @@ class PositionManager:
 
     def update_prices(
         self,
-        prices: Dict[str, float],
-    ) -> List[Dict[str, Any]]:
+        prices: dict[str, float],
+    ) -> list[dict[str, Any]]:
         """
         Update positions with current prices.
 
@@ -594,12 +594,12 @@ class PositionManager:
 
         return actions
 
-    def check_correlations(self) -> List[CorrelationWarning]:
+    def check_correlations(self) -> list[CorrelationWarning]:
         """Check portfolio for correlated positions."""
         position_list = list(self.positions.values())
         return self.correlation_detector.analyze_portfolio(position_list)
 
-    def get_portfolio_summary(self) -> Dict[str, Any]:
+    def get_portfolio_summary(self) -> dict[str, Any]:
         """Get portfolio summary."""
         total_value = sum(p["value"] for p in self.positions.values())
         total_pnl = sum(p["unrealized_pnl"] for p in self.positions.values())
@@ -619,11 +619,11 @@ class PositionManager:
             "trailing_stops": {mid: stop.get_stats() for mid, stop in self.trailing_stops.items()},
         }
 
-    def get_position(self, market_id: str) -> Optional[Dict[str, Any]]:
+    def get_position(self, market_id: str) -> dict[str, Any] | None:
         """Get position by market ID."""
         return self.positions.get(market_id)
 
-    def get_all_positions(self) -> List[Dict[str, Any]]:
+    def get_all_positions(self) -> list[dict[str, Any]]:
         """Get all positions."""
         return list(self.positions.values())
 

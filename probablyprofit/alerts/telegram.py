@@ -14,7 +14,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -38,7 +38,7 @@ class Alert:
     title: str
     message: str
     timestamp: datetime
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class TelegramAlerter:
@@ -62,9 +62,9 @@ class TelegramAlerter:
 
     def __init__(
         self,
-        bot_token: Optional[str] = None,
-        chat_id: Optional[str] = None,
-        alert_levels: Optional[List[str]] = None,
+        bot_token: str | None = None,
+        chat_id: str | None = None,
+        alert_levels: list[str] | None = None,
         rate_limit_per_minute: int = 30,
     ):
         """
@@ -86,17 +86,17 @@ class TelegramAlerter:
         self.rate_limit = rate_limit_per_minute
 
         # Rate limiting state
-        self._message_times: Deque[float] = deque(maxlen=rate_limit_per_minute)
+        self._message_times: deque[float] = deque(maxlen=rate_limit_per_minute)
         self._lock = asyncio.Lock()
 
         # HTTP client
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
         # Alert history (for debugging)
-        self._alert_history: Deque[Alert] = deque(maxlen=100)
+        self._alert_history: deque[Alert] = deque(maxlen=100)
 
         # Suppress repeated alerts
-        self._last_alert_hash: Optional[str] = None
+        self._last_alert_hash: str | None = None
         self._repeat_count = 0
 
         logger.info(
@@ -164,7 +164,7 @@ class TelegramAlerter:
         level: AlertLevel,
         title: str,
         message: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         force: bool = False,
     ) -> bool:
         """
@@ -267,7 +267,7 @@ class TelegramAlerter:
         side: str,
         size: float,
         price: float,
-        pnl: Optional[float] = None,
+        pnl: float | None = None,
     ) -> bool:
         """Alert for trade execution."""
         message = f"{side} {size:.2f} shares @ ${price:.4f}"
@@ -395,7 +395,7 @@ class TelegramAlerter:
 
 
 # Singleton alerter instance
-_alerter: Optional[TelegramAlerter] = None
+_alerter: TelegramAlerter | None = None
 
 
 def get_alerter() -> TelegramAlerter:
@@ -410,7 +410,7 @@ async def send_alert(
     level: AlertLevel,
     title: str,
     message: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> bool:
     """Convenience function to send an alert using the global alerter."""
     return await get_alerter().send_alert(level, title, message, metadata)

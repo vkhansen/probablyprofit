@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 
 # Note: Type checking import to avoid circular dependency if needed, but BaseStrategy doesn't import BaseAgent
-from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from loguru import logger
 from pydantic import BaseModel, ConfigDict
@@ -25,7 +25,7 @@ from probablyprofit.alerts.telegram import get_alerter
 from probablyprofit.api.client import Market, Order, PolymarketClient, Position
 from probablyprofit.config import get_config
 from probablyprofit.risk.manager import RiskManager
-from probablyprofit.utils.killswitch import KillSwitchError, get_kill_switch, is_kill_switch_active
+from probablyprofit.utils.killswitch import get_kill_switch, is_kill_switch_active
 
 if TYPE_CHECKING:
     from probablyprofit.agent.strategy import BaseStrategy
@@ -43,29 +43,29 @@ class Observation(BaseModel):
     """Represents an observation of the market state."""
 
     timestamp: datetime
-    markets: List[Market]
-    positions: List[Position]
+    markets: list[Market]
+    positions: list[Position]
     balance: float
-    signals: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
+    signals: dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
     # Intelligence Layer (Phase 2)
-    news_context: Optional[str] = None  # Formatted news summary
-    sentiment_summary: Optional[str] = None  # Formatted sentiment analysis
-    market_sentiments: Dict[str, Any] = {}  # market_id -> sentiment data
+    news_context: str | None = None  # Formatted news summary
+    sentiment_summary: str | None = None  # Formatted sentiment analysis
+    market_sentiments: dict[str, Any] = {}  # market_id -> sentiment data
 
 
 class Decision(BaseModel):
     """Represents a trading decision."""
 
     action: Action  # "buy", "sell", "hold"
-    market_id: Optional[str] = None
-    outcome: Optional[str] = None
+    market_id: str | None = None
+    outcome: str | None = None
     size: float = 0.0
-    price: Optional[float] = None
+    price: float | None = None
     reasoning: str = ""
     confidence: float = 0.5
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
 
 
 class AgentMemory(BaseModel):
@@ -78,10 +78,10 @@ class AgentMemory(BaseModel):
     # Note: Pydantic v2 handles deque serialization automatically
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    observations: Deque[Observation] = deque(maxlen=100)
-    decisions: Deque[Decision] = deque(maxlen=100)
-    trades: Deque[Order] = deque(maxlen=100)
-    metadata: Dict[str, Any] = {}
+    observations: deque[Observation] = deque(maxlen=100)
+    decisions: deque[Decision] = deque(maxlen=100)
+    trades: deque[Order] = deque(maxlen=100)
+    metadata: dict[str, Any] = {}
 
     # Database persistence
     enable_persistence: bool = False
@@ -353,7 +353,7 @@ class BaseAgent(ABC):
         key = f"{market_id}:{outcome}"
         self._open_positions.add(key)
 
-    async def _resolve_tag_id(self, tag_slug: Optional[str]) -> Optional[int]:
+    async def _resolve_tag_id(self, tag_slug: str | None) -> int | None:
         """Helper to resolve a tag slug to a tag ID."""
         if not tag_slug:
             return None
@@ -368,7 +368,7 @@ class BaseAgent(ABC):
             logger.error(f"Error resolving tag ID for slug '{tag_slug}': {e}")
         return None
 
-    def _calculate_max_end_date(self, max_minutes: Optional[int]) -> Optional[str]:
+    def _calculate_max_end_date(self, max_minutes: int | None) -> str | None:
         """Helper to calculate max end date from now + duration."""
         if max_minutes is None:
             return None
@@ -857,7 +857,7 @@ class BaseAgent(ABC):
         # Give the loop a moment to exit gracefully
         await asyncio.sleep(0.2)
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Get agent health status."""
         return {
             "name": self.name,

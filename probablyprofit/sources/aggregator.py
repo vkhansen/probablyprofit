@@ -9,7 +9,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -36,14 +36,14 @@ class AlphaSignal(BaseModel):
     news_sentiment: float = 0.0
 
     # Source availability
-    sources_used: List[str] = []
-    sources_failed: List[str] = []
+    sources_used: list[str] = []
+    sources_failed: list[str] = []
 
     # Raw data for debugging
-    twitter_data: Optional[Dict[str, Any]] = None
-    reddit_data: Optional[Dict[str, Any]] = None
-    trends_data: Optional[Dict[str, Any]] = None
-    news_data: Optional[Dict[str, Any]] = None
+    twitter_data: dict[str, Any] | None = None
+    reddit_data: dict[str, Any] | None = None
+    trends_data: dict[str, Any] | None = None
+    news_data: dict[str, Any] | None = None
 
     timestamp: datetime = datetime.now()
 
@@ -116,9 +116,9 @@ class SignalAggregator:
 
     def __init__(
         self,
-        twitter_token: Optional[str] = None,
-        perplexity_key: Optional[str] = None,
-        config: Optional[AggregatorConfig] = None,
+        twitter_token: str | None = None,
+        perplexity_key: str | None = None,
+        config: AggregatorConfig | None = None,
     ):
         """
         Initialize signal aggregator.
@@ -330,7 +330,7 @@ class SignalAggregator:
 
         return signal
 
-    async def _fetch_twitter(self, question: str) -> Dict[str, Any]:
+    async def _fetch_twitter(self, question: str) -> dict[str, Any]:
         """Fetch Twitter sentiment."""
         try:
             sentiment = await self._twitter.get_market_sentiment(question)
@@ -343,7 +343,7 @@ class SignalAggregator:
         except Exception as e:
             raise RuntimeError(f"Twitter fetch failed: {e}")
 
-    async def _fetch_reddit(self, question: str) -> Dict[str, Any]:
+    async def _fetch_reddit(self, question: str) -> dict[str, Any]:
         """Fetch Reddit sentiment."""
         try:
             sentiment = await self._reddit.get_market_sentiment(question)
@@ -357,7 +357,7 @@ class SignalAggregator:
         except Exception as e:
             raise RuntimeError(f"Reddit fetch failed: {e}")
 
-    async def _fetch_trends(self, question: str) -> Dict[str, Any]:
+    async def _fetch_trends(self, question: str) -> dict[str, Any]:
         """Fetch Google Trends data."""
         try:
             trends = await self._trends.get_market_sentiment(question)
@@ -370,7 +370,7 @@ class SignalAggregator:
         except Exception as e:
             raise RuntimeError(f"Trends fetch failed: {e}")
 
-    async def _fetch_news(self, question: str) -> Dict[str, Any]:
+    async def _fetch_news(self, question: str) -> dict[str, Any]:
         """Fetch Perplexity news."""
         try:
             context = await self._perplexity.get_market_context(question)
@@ -430,9 +430,9 @@ class SignalAggregator:
 
     async def get_batch_signals(
         self,
-        market_questions: List[str],
+        market_questions: list[str],
         max_concurrent: int = 3,
-    ) -> Dict[str, AlphaSignal]:
+    ) -> dict[str, AlphaSignal]:
         """
         Get signals for multiple markets.
 
@@ -480,8 +480,8 @@ class SignalAggregator:
 
 
 def create_aggregator(
-    twitter_token: Optional[str] = None,
-    perplexity_key: Optional[str] = None,
+    twitter_token: str | None = None,
+    perplexity_key: str | None = None,
 ) -> SignalAggregator:
     """
     Create a SignalAggregator with env var fallbacks.

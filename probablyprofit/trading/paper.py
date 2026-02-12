@@ -7,10 +7,9 @@ Tracks virtual positions, P&L, and trade history.
 
 import json
 import os
-from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -49,7 +48,7 @@ class PaperPosition(BaseModel):
     avg_price: float
     current_price: float = 0.5
     opened_at: datetime = Field(default_factory=datetime.now)
-    trades: List[str] = Field(default_factory=list)  # trade_ids
+    trades: list[str] = Field(default_factory=list)  # trade_ids
 
     @field_serializer("opened_at")
     def serialize_opened_at(self, v: datetime) -> str:
@@ -85,8 +84,8 @@ class PaperPortfolio(BaseModel):
 
     initial_capital: float = 1000.0
     cash: float = 1000.0
-    positions: Dict[str, PaperPosition] = Field(default_factory=dict)
-    trades: List[PaperTrade] = Field(default_factory=list)
+    positions: dict[str, PaperPosition] = Field(default_factory=dict)
+    trades: list[PaperTrade] = Field(default_factory=list)
     realized_pnl: float = 0.0
     total_fees: float = 0.0
     created_at: datetime = Field(default_factory=datetime.now)
@@ -153,7 +152,7 @@ class PaperTradingEngine:
         self,
         initial_capital: float = 1000.0,
         fee_rate: float = 0.02,  # 2% fee
-        persistence_path: Optional[str] = None,
+        persistence_path: str | None = None,
     ):
         """
         Initialize paper trading engine.
@@ -187,7 +186,7 @@ class PaperTradingEngine:
         action: str,
         size: float,
         price: float,
-    ) -> Optional[PaperTrade]:
+    ) -> PaperTrade | None:
         """
         Execute a paper trade.
 
@@ -345,7 +344,7 @@ class PaperTradingEngine:
         if opposite_key in self.portfolio.positions:
             self.portfolio.positions[opposite_key].current_price = 1 - price
 
-    def update_prices_from_markets(self, markets: List[Any]):
+    def update_prices_from_markets(self, markets: list[Any]):
         """
         Update prices from market data.
 
@@ -366,7 +365,7 @@ class PaperTradingEngine:
         market_id: str,
         side: str,
         price: float,
-    ) -> Optional[PaperTrade]:
+    ) -> PaperTrade | None:
         """
         Close an entire position.
 
@@ -392,16 +391,16 @@ class PaperTradingEngine:
             price=price,
         )
 
-    def get_position(self, market_id: str, side: str = "yes") -> Optional[PaperPosition]:
+    def get_position(self, market_id: str, side: str = "yes") -> PaperPosition | None:
         """Get a specific position."""
         position_key = f"{market_id}_{side.lower()}"
         return self.portfolio.positions.get(position_key)
 
-    def get_all_positions(self) -> List[PaperPosition]:
+    def get_all_positions(self) -> list[PaperPosition]:
         """Get all open positions."""
         return list(self.portfolio.positions.values())
 
-    def get_portfolio_summary(self) -> Dict[str, Any]:
+    def get_portfolio_summary(self) -> dict[str, Any]:
         """Get portfolio summary."""
         return {
             "initial_capital": self.portfolio.initial_capital,
@@ -417,11 +416,11 @@ class PaperTradingEngine:
             "trades_count": len(self.portfolio.trades),
         }
 
-    def get_trade_history(self, limit: int = 50) -> List[PaperTrade]:
+    def get_trade_history(self, limit: int = 50) -> list[PaperTrade]:
         """Get recent trade history."""
         return self.portfolio.trades[-limit:]
 
-    def reset(self, initial_capital: Optional[float] = None):
+    def reset(self, initial_capital: float | None = None):
         """Reset portfolio to initial state."""
         capital = initial_capital or self.portfolio.initial_capital
         self.portfolio = PaperPortfolio(
@@ -454,7 +453,7 @@ class PaperTradingEngine:
     def _load_portfolio(self, path: str) -> PaperPortfolio:
         """Load portfolio from disk."""
         try:
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = json.load(f)
 
             # Reconstruct positions

@@ -7,7 +7,7 @@ Uses Perplexity's Sonar API for fast, accurate web research.
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -20,8 +20,8 @@ class NewsItem(BaseModel):
     title: str
     source: str
     summary: str
-    url: Optional[str] = None
-    published_at: Optional[datetime] = None
+    url: str | None = None
+    published_at: datetime | None = None
     relevance_score: float = 0.5
 
 
@@ -30,11 +30,11 @@ class NewsContext(BaseModel):
 
     market_question: str
     summary: str
-    news_items: List[NewsItem] = []
+    news_items: list[NewsItem] = []
     sentiment: str = "neutral"  # bullish, bearish, neutral
     confidence: float = 0.5
     timestamp: datetime = datetime.now()
-    raw_response: Optional[str] = None
+    raw_response: str | None = None
 
     def format_for_prompt(self) -> str:
         """Format news context for AI agent prompt."""
@@ -44,7 +44,7 @@ class NewsContext(BaseModel):
         lines = [
             f"📰 NEWS CONTEXT (as of {self.timestamp.strftime('%Y-%m-%d %H:%M')}):",
             f"Sentiment: {self.sentiment.upper()} (confidence: {self.confidence:.0%})",
-            f"",
+            "",
             f"Summary: {self.summary}",
         ]
 
@@ -100,7 +100,7 @@ class PerplexityClient:
         )
         logger.info(f"PerplexityClient initialized with model: {model}")
 
-    async def search(self, query: str, max_tokens: int = 1024) -> Dict[str, Any]:
+    async def search(self, query: str, max_tokens: int = 1024) -> dict[str, Any]:
         """
         Perform a search query.
 
@@ -245,9 +245,9 @@ Be concise and focus on facts, not speculation.
 
     async def get_batch_context(
         self,
-        market_questions: List[str],
+        market_questions: list[str],
         max_concurrent: int = 3,
-    ) -> Dict[str, NewsContext]:
+    ) -> dict[str, NewsContext]:
         """
         Get context for multiple markets efficiently.
 

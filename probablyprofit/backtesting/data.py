@@ -5,7 +5,6 @@ Generates synthetic market data for backtesting.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -76,7 +75,7 @@ class MockDataGenerator:
         self,
         num_markets: int = 5,
         days: int = 30,
-    ) -> List[List[Market]]:
+    ) -> list[list[Market]]:
         """
         Generate a full market scenario.
 

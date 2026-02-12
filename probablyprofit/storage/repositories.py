@@ -5,7 +5,6 @@ Repository pattern for data access layer - handles all database queries.
 """
 
 from datetime import datetime, timedelta
-from typing import List, Optional
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +14,6 @@ from probablyprofit.storage.models import (
     BalanceSnapshot,
     DecisionRecord,
     ObservationRecord,
-    PerformanceMetric,
-    PositionSnapshot,
     TradeRecord,
 )
 
@@ -27,7 +24,7 @@ class TradeRepository:
     @staticmethod
     async def create(
         session: AsyncSession,
-        order_id: Optional[str],
+        order_id: str | None,
         market_id: str,
         outcome: str,
         side: str,
@@ -35,12 +32,12 @@ class TradeRepository:
         price: float,
         status: str,
         filled_size: float = 0.0,
-        timestamp: Optional[datetime] = None,
-        observation_id: Optional[int] = None,
-        decision_id: Optional[int] = None,
-        realized_pnl: Optional[float] = None,
+        timestamp: datetime | None = None,
+        observation_id: int | None = None,
+        decision_id: int | None = None,
+        realized_pnl: float | None = None,
         fees: float = 0.0,
-        market_question: Optional[str] = None,
+        market_question: str | None = None,
     ) -> TradeRecord:
         """Create trade record."""
         trade = TradeRecord(
@@ -66,14 +63,14 @@ class TradeRepository:
         return trade
 
     @staticmethod
-    async def get_recent(session: AsyncSession, limit: int = 100) -> List[TradeRecord]:
+    async def get_recent(session: AsyncSession, limit: int = 100) -> list[TradeRecord]:
         """Get recent trades."""
         stmt = select(TradeRecord).order_by(TradeRecord.timestamp.desc()).limit(limit)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_by_market(session: AsyncSession, market_id: str) -> List[TradeRecord]:
+    async def get_by_market(session: AsyncSession, market_id: str) -> list[TradeRecord]:
         """Get trades for a specific market."""
         stmt = select(TradeRecord).where(TradeRecord.market_id == market_id)
         result = await session.execute(stmt)
@@ -82,7 +79,7 @@ class TradeRepository:
     @staticmethod
     async def get_date_range(
         session: AsyncSession, start: datetime, end: datetime
-    ) -> List[TradeRecord]:
+    ) -> list[TradeRecord]:
         """Get trades within date range."""
         stmt = (
             select(TradeRecord)
@@ -96,7 +93,7 @@ class TradeRepository:
     @staticmethod
     async def search_by_question(
         session: AsyncSession, search_text: str, limit: int = 100
-    ) -> List[TradeRecord]:
+    ) -> list[TradeRecord]:
         """
         Search trades by market question text.
 
@@ -137,8 +134,8 @@ class ObservationRepository:
         positions_json: str = "{}",
         signals_json: str = "{}",
         metadata_json: str = "{}",
-        news_context: Optional[str] = None,
-        sentiment_summary: Optional[str] = None,
+        news_context: str | None = None,
+        sentiment_summary: str | None = None,
     ) -> ObservationRecord:
         """Create observation record."""
         obs_record = ObservationRecord(
@@ -160,7 +157,7 @@ class ObservationRepository:
         return obs_record
 
     @staticmethod
-    async def get_recent(session: AsyncSession, limit: int = 100) -> List[ObservationRecord]:
+    async def get_recent(session: AsyncSession, limit: int = 100) -> list[ObservationRecord]:
         """Get recent observations."""
         stmt = select(ObservationRecord).order_by(ObservationRecord.timestamp.desc()).limit(limit)
         result = await session.execute(stmt)
@@ -174,17 +171,17 @@ class DecisionRepository:
     async def create(
         session: AsyncSession,
         action: str,
-        market_id: Optional[str],
-        outcome: Optional[str],
+        market_id: str | None,
+        outcome: str | None,
         size: float,
-        price: Optional[float],
+        price: float | None,
         reasoning: str,
         confidence: float,
         metadata_json: str = "{}",
-        observation_id: Optional[int] = None,
+        observation_id: int | None = None,
         agent_name: str = "unknown",
         agent_type: str = "unknown",
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> DecisionRecord:
         """Create decision record."""
         dec_record = DecisionRecord(
@@ -208,7 +205,7 @@ class DecisionRepository:
         return dec_record
 
     @staticmethod
-    async def get_recent(session: AsyncSession, limit: int = 100) -> List[DecisionRecord]:
+    async def get_recent(session: AsyncSession, limit: int = 100) -> list[DecisionRecord]:
         """Get recent decisions."""
         stmt = select(DecisionRecord).order_by(DecisionRecord.timestamp.desc()).limit(limit)
         result = await session.execute(stmt)
@@ -226,7 +223,7 @@ class PerformanceRepository:
         positions: int,
         daily_pnl: float,
         total_pnl: float,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> BalanceSnapshot:
         """Create daily balance snapshot."""
         snapshot = BalanceSnapshot(
@@ -244,7 +241,7 @@ class PerformanceRepository:
         return snapshot
 
     @staticmethod
-    async def get_equity_curve(session: AsyncSession, days: int = 30) -> List[BalanceSnapshot]:
+    async def get_equity_curve(session: AsyncSession, days: int = 30) -> list[BalanceSnapshot]:
         """Get equity curve for last N days."""
         cutoff = datetime.now() - timedelta(days=days)
         stmt = (

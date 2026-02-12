@@ -11,10 +11,11 @@ Simulates exchange behavior for integration testing:
 import asyncio
 import random
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -42,7 +43,7 @@ class MockOrder:
     status: str = "open"
     filled_size: float = 0.0
     created_at: datetime = field(default_factory=datetime.now)
-    fills: List[Dict] = field(default_factory=list)
+    fills: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -84,13 +85,13 @@ class MockExchangeClient:
         self.partial_fill_pct = partial_fill_pct
 
         # State
-        self.orders: Dict[str, MockOrder] = {}
-        self.positions: Dict[str, MockPosition] = {}
+        self.orders: dict[str, MockOrder] = {}
+        self.positions: dict[str, MockPosition] = {}
         self.balance: float = 10000.0
 
         # Callbacks for testing
-        self._on_order_placed: Optional[Callable] = None
-        self._on_fill: Optional[Callable] = None
+        self._on_order_placed: Callable | None = None
+        self._on_fill: Callable | None = None
 
         # Error injection
         self._inject_errors: bool = False
@@ -116,7 +117,7 @@ class MockExchangeClient:
         size: float,
         price: float,
         order_type: str = "LIMIT",
-        fill_behavior: Optional[FillBehavior] = None,
+        fill_behavior: FillBehavior | None = None,
     ) -> MockOrder:
         """
         Place an order on the mock exchange.
@@ -252,7 +253,7 @@ class MockExchangeClient:
         logger.debug(f"Mock order cancelled: {order_id}")
         return True
 
-    async def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+    async def get_order(self, order_id: str) -> dict[str, Any] | None:
         """Get order status."""
         await self._simulate_latency()
 
@@ -267,7 +268,7 @@ class MockExchangeClient:
             "remaining_size": order.size - order.filled_size,
         }
 
-    async def get_positions(self) -> List[MockPosition]:
+    async def get_positions(self) -> list[MockPosition]:
         """Get all open positions."""
         await self._simulate_latency()
         return [p for p in self.positions.values() if p.size != 0]

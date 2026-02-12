@@ -2,7 +2,6 @@ from datetime import datetime
 
 import pytest
 
-from probablyprofit.api.client import Market
 from probablyprofit.backtesting.engine import BacktestEngine
 
 

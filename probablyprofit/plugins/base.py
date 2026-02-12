@@ -6,7 +6,7 @@ Abstract base classes for different plugin types.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -15,7 +15,7 @@ class PluginConfig:
 
     enabled: bool = True
     priority: int = 0  # Higher = runs first
-    options: Optional[Dict[str, Any]] = None
+    options: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.options is None:
@@ -28,7 +28,7 @@ class BasePlugin(ABC):
     name: str = "base_plugin"
     version: str = "1.0.0"
 
-    def __init__(self, config: Optional[PluginConfig] = None):
+    def __init__(self, config: PluginConfig | None = None):
         self.config = config or PluginConfig()
         self._initialized = False
 
@@ -53,7 +53,7 @@ class DataSourcePlugin(BasePlugin):
     """
 
     @abstractmethod
-    async def fetch(self, query: str) -> Dict[str, Any]:
+    async def fetch(self, query: str) -> dict[str, Any]:
         """
         Fetch data from the source.
 
@@ -65,7 +65,7 @@ class DataSourcePlugin(BasePlugin):
         """
         pass
 
-    async def fetch_batch(self, queries: List[str]) -> List[Dict[str, Any]]:
+    async def fetch_batch(self, queries: list[str]) -> list[dict[str, Any]]:
         """Fetch multiple queries. Override for optimized batch fetching."""
         return [await self.fetch(q) for q in queries]
 
@@ -104,7 +104,7 @@ class StrategyPlugin(BasePlugin):
         pass
 
     @abstractmethod
-    def filter_markets(self, markets: List[Any]) -> List[Any]:
+    def filter_markets(self, markets: list[Any]) -> list[Any]:
         """Filter markets based on strategy criteria."""
         pass
 
@@ -121,7 +121,7 @@ class RiskPlugin(BasePlugin):
     """
 
     @abstractmethod
-    def check(self, decision: Any, context: Dict[str, Any]) -> bool:
+    def check(self, decision: Any, context: dict[str, Any]) -> bool:
         """
         Check if a decision passes risk rules.
 
@@ -134,7 +134,7 @@ class RiskPlugin(BasePlugin):
         """
         pass
 
-    def modify(self, decision: Any, context: Dict[str, Any]) -> Any:
+    def modify(self, decision: Any, context: dict[str, Any]) -> Any:
         """Optionally modify a decision. Override for position sizing etc."""
         return decision
 
@@ -147,7 +147,7 @@ class OutputPlugin(BasePlugin):
     """
 
     @abstractmethod
-    async def send(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def send(self, event_type: str, data: dict[str, Any]) -> None:
         """
         Send output for an event.
 

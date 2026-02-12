@@ -7,8 +7,7 @@ Scrapes relevant subreddits for prediction market alpha.
 
 import asyncio
 import re
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 import httpx
 from loguru import logger
@@ -26,7 +25,7 @@ class RedditPost(BaseModel):
     score: int = 0
     num_comments: int = 0
     created_at: datetime
-    url: Optional[str] = None
+    url: str | None = None
     is_comment: bool = False
 
     @property
@@ -39,11 +38,11 @@ class RedditSentiment(BaseModel):
     """Aggregated Reddit sentiment for a topic."""
 
     topic: str
-    posts: List[RedditPost] = []
+    posts: list[RedditPost] = []
     sentiment_score: float = 0.0  # -1 to +1
     volume: int = 0
-    top_subreddits: List[str] = []
-    hot_discussions: List[str] = []
+    top_subreddits: list[str] = []
+    hot_discussions: list[str] = []
     timestamp: datetime = datetime.now()
 
     @property
@@ -238,7 +237,7 @@ class RedditClient:
         limit: int = 25,
         sort: str = "relevance",
         time_filter: str = "week",
-    ) -> List[RedditPost]:
+    ) -> list[RedditPost]:
         """
         Search within a subreddit.
 
@@ -303,7 +302,7 @@ class RedditClient:
         self,
         subreddit: str,
         limit: int = 25,
-    ) -> List[RedditPost]:
+    ) -> list[RedditPost]:
         """Get hot posts from a subreddit."""
         await self._rate_limit()
 
@@ -346,9 +345,9 @@ class RedditClient:
     async def search_all(
         self,
         query: str,
-        subreddits: Optional[List[str]] = None,
+        subreddits: list[str] | None = None,
         limit_per_sub: int = 10,
-    ) -> List[RedditPost]:
+    ) -> list[RedditPost]:
         """
         Search across multiple subreddits.
 
@@ -376,7 +375,7 @@ class RedditClient:
 
         return all_posts
 
-    def _select_subreddits(self, query: str) -> List[str]:
+    def _select_subreddits(self, query: str) -> list[str]:
         """Auto-select relevant subreddits based on query."""
         query_lower = query.lower()
 
@@ -425,7 +424,7 @@ class RedditClient:
     async def get_sentiment(
         self,
         topic: str,
-        subreddits: Optional[List[str]] = None,
+        subreddits: list[str] | None = None,
         max_posts: int = 50,
     ) -> RedditSentiment:
         """

@@ -8,7 +8,6 @@ Provides validation and sanitization for:
 """
 
 import re
-from typing import List, Optional, Tuple
 
 from loguru import logger
 
@@ -214,7 +213,7 @@ def validate_address(address: str) -> str:
     return address
 
 
-def check_suspicious_patterns(text: str) -> List[Tuple[str, str]]:
+def check_suspicious_patterns(text: str) -> list[tuple[str, str]]:
     """
     Check text for suspicious patterns that may indicate prompt injection.
 
@@ -299,7 +298,7 @@ def validate_strategy(
     text: str,
     min_length: int = 10,
     max_length: int = MAX_STRATEGY_LENGTH,
-) -> Tuple[str, List[str]]:
+) -> tuple[str, list[str]]:
     """
     Validate and sanitize a trading strategy prompt.
 

@@ -19,16 +19,6 @@ from sqlmodel import SQLModel
 from alembic import context
 
 # Import all models to ensure they're registered with SQLModel.metadata
-from probablyprofit.storage.models import (
-    BacktestRun,
-    BalanceSnapshot,
-    DecisionRecord,
-    ObservationRecord,
-    PerformanceMetric,
-    PositionSnapshot,
-    RiskStateRecord,
-    TradeRecord,
-)
 
 # this is the Alembic Config object
 config = context.config
