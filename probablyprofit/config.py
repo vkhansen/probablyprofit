@@ -724,7 +724,10 @@ def validate_api_key(provider: str, key: str) -> bool:
 
             client = anthropic.Anthropic(api_key=key)
             # Count tokens is a lightweight validation call
-            client.count_tokens("test")
+            client.messages.count_tokens(
+                model="claude-sonnet-4-5-20250929",
+                messages=[{"role": "user", "content": "test"}],
+            )
             return True
 
         elif provider == "google":
