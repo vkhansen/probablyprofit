@@ -396,7 +396,6 @@ class BaseAgent(ABC):
         # Fetch markets with new filters
         markets = await self.client.get_markets(
             closed=False,
-            active=True,
             limit=100,
             tag_id=tag_id,
             end_date_max=end_date_max,

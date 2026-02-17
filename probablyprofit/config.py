@@ -210,8 +210,8 @@ class Config:
             return None
         if self.preferred_agent != "auto" and self.preferred_agent in available:
             return self.preferred_agent
-        # Preference order: anthropic > openai > google
-        for agent in ["anthropic", "openai", "google"]:
+        # Preference order: anthropic > google > openai
+        for agent in ["anthropic", "google", "openai"]:
             if agent in available:
                 return agent
         return available[0] if available else None

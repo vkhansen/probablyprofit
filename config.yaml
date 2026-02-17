@@ -1,0 +1,27 @@
+# This file is for local configuration and is not committed to version control.
+# For a full list of options, see config.yaml.example
+
+# Basic trading settings
+trading:
+  dry_run: false
+  initial_capital: 1000.0
+  interval: 60  # seconds
+
+# Agent settings - 'google' is recommended
+ai:
+  preferred_agent: google
+
+# Risk management
+risk:
+  max_position_size: 50.0  # Max $ per trade
+  max_daily_loss: 100.0   # Max $ to lose in a day
+
+# Logging configuration
+logging:
+  level: "DEBUG"
+  file:
+    enabled: true
+    path: "logs/probablyprofit_{timestamp}.log"
+    level: "DEBUG"
+    retention: "7 days"
+    rotation: "10 MB"

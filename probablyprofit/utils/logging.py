@@ -238,6 +238,9 @@ def setup_logging(
 
     # Add file handler if specified
     if log_file:
+        if "{timestamp}" in log_file:
+            from datetime import datetime
+            log_file = log_file.format(timestamp=datetime.now().strftime("%Y%m%d_%H%M%S"))
         logger.add(
             log_file,
             format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function} - {message}",
