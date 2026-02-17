@@ -315,40 +315,45 @@ class PreflightChecker:
                 message="No AI providers configured",
             )
 
-        # Try to reach all available providers
-        all_results = []
-        for agent in available:
-            api_key = config.get_api_key_for_agent(agent)
-            try:
-                if agent == "openai":
-                    import openai
+        # Try to reach the best available provider
+        best = config.get_best_agent()
+        api_key = config.get_api_key_for_agent(best)
 
-                    client = openai.OpenAI(api_key=api_key, timeout=10.0)
-                    client.models.list()
-                elif agent == "anthropic":
-                    import anthropic
+        try:
+            if best == "openai":
+                import openai
 
-                    client = anthropic.Anthropic(api_key=api_key, timeout=10.0)
-                    client.messages.count_tokens(
-                        model=config.get_model_for_agent(agent),
-                        messages=[{"role": "user", "content": "test"}],
-                    )
-                elif agent == "google":
-                    import google.generativeai as genai
+                client = openai.OpenAI(api_key=api_key, timeout=10.0)
+                # Quick validation - list models
+                client.models.list()
+            elif best == "anthropic":
+                import anthropic
 
-                    genai.configure(api_key=api_key)
-                    list(genai.list_models())
+                client = anthropic.Anthropic(api_key=api_key, timeout=10.0)
+                # Quick validation - count tokens
+                client.messages.count_tokens(
+                    model="claude-sonnet-4-5-20250929",
+                    messages=[{"role": "user", "content": "test"}],
+                )
+            elif best == "google":
+                import google.generativeai as genai
 
-                all_results.append(f"{agent} (reachable)")
-            except Exception:
-                all_results.append(f"{agent} (unreachable)")
+                genai.configure(api_key=api_key)
+                list(genai.list_models())
 
-        return CheckResult(
-            name="AI Provider",
-            status=CheckStatus.PASS,
-            message=", ".join(all_results),
-            details={"available": available},
-        )
+            return CheckResult(
+                name="AI Provider",
+                status=CheckStatus.PASS,
+                message=f"AI provider reachable: {best}",
+                details={"provider": best, "available": available},
+            )
+
+        except Exception as e:
+            return CheckResult(
+                name="AI Provider",
+                status=CheckStatus.FAIL,
+                message=f"AI provider {best} unreachable: {e}",
+            )
 
     async def _check_telegram(self, dry_run: bool = True) -> CheckResult:
         """Check Telegram alerting configuration."""

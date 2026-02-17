@@ -479,8 +479,8 @@ class PolymarketClient:
                     "active": "true",
                     "limit": limit,
                     "offset": offset,
-                    "tag_id": tag_id if tag_id else "",
-                    "end_date_max": end_date_max if end_date_max else "",
+                    "tag_id": tag_id,
+                    "end_date_max": end_date_max,
                 },
             )
             response.raise_for_status()
