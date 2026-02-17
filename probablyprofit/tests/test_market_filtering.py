@@ -52,8 +52,9 @@ async def test_tag_resolution(mock_agent):
     tag_id = await mock_agent._resolve_tag_id("cryptocurrency")
     assert tag_id == 1
 
-    tag_id_none = await mock_agent._resolve_tag_id("non-existent-tag")
-    assert tag_id_none is None
+    # Test that non-existent tag raises ValueError
+    with pytest.raises(ValueError, match="Tag slug 'non-existent-tag' not found"):
+        await mock_agent._resolve_tag_id("non-existent-tag")
 
 
 @pytest.mark.asyncio

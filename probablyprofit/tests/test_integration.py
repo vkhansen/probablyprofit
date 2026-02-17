@@ -433,7 +433,7 @@ class TestFullTradeFlow:
         mock_client.get_positions = AsyncMock(return_value=[])
         mock_client.get_balance = AsyncMock(return_value=1000.0)
         mock_client.place_order = AsyncMock(return_value=None)
-        mock_client.get_tags = AsyncMock(return_value=[{"slug": "crypto", "id": 123}])
+        mock_client.get_tags = AsyncMock(return_value=[{"slug": "cryptocurrency", "id": 123}])
 
         risk_manager = RiskManager(initial_capital=1000.0)
 
@@ -492,7 +492,7 @@ class TestFullTradeFlow:
         mock_client.get_positions = AsyncMock(return_value=[])
         mock_client.get_balance = AsyncMock(return_value=1000.0)
         mock_client.place_order = AsyncMock(return_value=None)
-        mock_client.get_tags = AsyncMock(return_value=[{"slug": "crypto", "id": 123}])
+        mock_client.get_tags = AsyncMock(return_value=[{"slug": "cryptocurrency", "id": 123}])
 
         risk_manager = RiskManager(initial_capital=1000.0)
 

@@ -417,9 +417,11 @@ class BaseAgent(ABC):
                     "Please correct the `market_tag_slug` in your config file."
                 )
                 # Return empty observation to prevent further processing
-                return Observation(
+                observation = Observation(
                     timestamp=datetime.now(), markets=[], positions=[], balance=0.0
                 )
+                await self.memory.add_observation(observation)
+                return observation
 
         # Calculate max end date
         end_date_max = self._calculate_max_end_date(cfg.api.market_duration_max_minutes)

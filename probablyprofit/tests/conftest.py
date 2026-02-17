@@ -116,6 +116,7 @@ def mock_client() -> AsyncMock:
     client.cancel_order.return_value = True
     client.get_market.return_value = create_mock_market()
     client.close.return_value = None
+    client.get_tags.return_value = [{"slug": "cryptocurrency", "id": 1}]
 
     return client
 

@@ -32,6 +32,7 @@ def mock_client():
         filled_size=10.0,
         timestamp=datetime.now(),
     )
+    client.get_tags.return_value = [{"slug": "cryptocurrency", "id": 1}]
     return client
 
 
