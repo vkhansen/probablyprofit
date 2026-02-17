@@ -354,19 +354,39 @@ class BaseAgent(ABC):
         self._open_positions.add(key)
 
     async def _resolve_tag_id(self, tag_slug: str | None) -> int | None:
-        """Helper to resolve a tag slug to a tag ID."""
+        """
+        Helper to resolve a tag slug to a tag ID.
+
+        Raises:
+            ValueError: If the tag slug cannot be found.
+        """
         if not tag_slug:
             return None
         try:
             tags = await self.client.get_tags()
+            if not tags:
+                logger.warning("Polymarket API returned no tags.")
+
             for tag in tags:
                 if tag.get("slug") == tag_slug:
                     logger.info(f"Resolved tag slug '{tag_slug}' to ID {tag['id']}")
                     return tag["id"]
-            logger.warning(f"Tag slug '{tag_slug}' not found.")
+
+            # If the loop completes without finding the tag
+            available_slugs = ", ".join(
+                [f"'{tag.get('slug', 'N/A')}'" for tag in tags if tag.get("slug")]
+            )
+            error_msg = (
+                f"Configuration error: Tag slug '{tag_slug}' not found in Polymarket. "
+                f"Please use one of the available slugs: [{available_slugs}]"
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
         except Exception as e:
             logger.error(f"Error resolving tag ID for slug '{tag_slug}': {e}")
-        return None
+            raise  # Re-raise the exception after logging
+
 
     def _calculate_max_end_date(self, max_minutes: int | None) -> str | None:
         """Helper to calculate max end date from now + duration."""
@@ -388,7 +408,18 @@ class BaseAgent(ABC):
         # Resolve tag_id from slug or use directly from config
         tag_id = cfg.api.market_tag_id
         if not tag_id and cfg.api.market_tag_slug:
-            tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)
+            try:
+                tag_id = await self._resolve_tag_id(cfg.api.market_tag_slug)
+            except ValueError as e:
+                # Catch the specific error from _resolve_tag_id
+                logger.critical(
+                    f"Stopping agent due to configuration error: {e}. "
+                    "Please correct the `market_tag_slug` in your config file."
+                )
+                # Return empty observation to prevent further processing
+                return Observation(
+                    timestamp=datetime.now(), markets=[], positions=[], balance=0.0
+                )
 
         # Calculate max end date
         end_date_max = self._calculate_max_end_date(cfg.api.market_duration_max_minutes)
